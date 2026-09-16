@@ -1,0 +1,1571 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Racing Rentals and Racing Sales — car hire and a used car yard in Sydney, under one roof.">
+<meta name="theme-color" content="#2F6BFF">
+<meta name="robots" content="noindex">
+<style>
+  /* the artifact host supplies these; a standalone page needs them itself */
+  :root{padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+  html{color-scheme:light}
+  [hidden]{display:none !important}
+</style>
+<title>Racing Rentals &amp; Sales</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+
+<style>
+/* ============================================================
+   RACING — one app, two arms. Hire (Racing Rentals) and Buy
+   (Racing Sales) share a shell; the mode lives on <body>.
+   Pocket direction, carried to full width.
+   ============================================================ */
+:root{
+  --bg:#FFFFFF;
+  --card-bg:#FFFFFF;
+  --surf:#F4F7FB;
+  --surf-2:#E9EFF7;
+  --ink:#0D1B2A;
+  --ink-2:#2C3E52;
+  --mute:#63707F;
+  --line:#E3E8EF;
+  --brand:#2F6BFF;
+  --brand-dk:#1E4FD0;
+  --brand-wash:#EDF2FF;
+  --ok:#12B76A;
+  --warn:#F79009;
+  --ring:0 0 0 4px rgba(47,107,255,.18);
+  --card:0 1px 2px rgba(13,27,42,.04), 0 10px 26px -14px rgba(13,27,42,.20);
+  --lift:0 2px 6px rgba(13,27,42,.06), 0 22px 46px -20px rgba(13,27,42,.28);
+  --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
+  --gut:clamp(18px,4vw,44px);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Onest",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+img,svg{max-width:100%}
+a{color:inherit; text-decoration:none}
+:focus-visible{outline:2px solid var(--brand); outline-offset:2px; border-radius:6px}
+
+.shell{max-width:1220px; margin:0 auto; padding-inline:var(--gut)}
+.eyebrow{
+  font-size:12px; font-weight:700; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--brand); margin:0;
+}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* Racing Sales runs on a cooler, greyer ground with the cards floating white
+   on top of it — a showroom listing, not the airy hire page. Cards keep
+   --card-bg so the cut-out photos always sit on white either way. */
+/* No transition here: a background-color transition whose value comes from a
+   custom property gets stuck mid-flight in WebKit, so the ground never
+   reverted to white. An instant switch is a clearer signal anyway. */
+body.mode-buy{
+  --bg:#EBF0F6;
+  --surf:#E1E8F1;
+  --surf-2:#D4DFEB;
+  --line:#D7E0EA;
+}
+body.mode-buy .veh,
+body.mode-buy .cat,
+body.mode-buy .filters,
+body.mode-buy .trust{box-shadow:0 1px 2px rgba(13,27,42,.05)}
+
+/* ── the mode gate: exactly one arm is ever in the document flow ── */
+body:not(.mode-buy) [data-arm="buy"]{display:none !important}
+body.mode-buy       [data-arm="hire"]{display:none !important}
+
+/* ============================== HEADER ============================== */
+.hdr{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:60;
+  background:rgba(255,255,255,.90); backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--line);
+}
+.hdr-in{display:flex; align-items:center; gap:18px; height:70px}
+.brand{display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px;
+  letter-spacing:-.03em; flex:0 0 auto}
+.brand .mk{
+  width:32px; height:32px; border-radius:10px; background:var(--ink);
+  display:grid; place-items:center; flex:0 0 auto;
+}
+.brand .mk svg{display:block}
+.brand .arm{color:var(--brand)}
+
+/* Hire / Buy switch — the most important control on the page */
+.modesw{
+  display:flex; background:var(--surf); border-radius:999px; padding:3px;
+  flex:0 0 auto; border:1px solid var(--line);
+}
+.modesw button{
+  font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+  border:none; background:none; color:var(--mute); border-radius:999px;
+  padding:7px 16px; transition:background .18s ease, color .18s ease, box-shadow .18s ease;
+  white-space:nowrap;
+}
+.modesw button[aria-pressed="true"]{
+  background:var(--card-bg); color:var(--ink); box-shadow:0 1px 3px rgba(13,27,42,.16);
+}
+.nav{display:flex; gap:4px; flex:1 1 auto; min-width:0; flex-wrap:nowrap; overflow:hidden}
+.nav a{
+  padding:8px 12px; border-radius:999px; font-size:14.5px; font-weight:500;
+  color:var(--ink-2); white-space:nowrap; transition:background .16s ease, color .16s ease;
+}
+.nav a:hover{background:var(--surf); color:var(--ink)}
+.nav a.on{background:var(--brand-wash); color:var(--brand-dk); font-weight:600}
+.hdr-cta{display:flex; align-items:center; gap:10px; flex:0 0 auto}
+.tel{
+  display:flex; align-items:center; gap:8px; font-weight:600; font-size:14.5px;
+  padding:8px 12px; border-radius:999px; color:var(--ink);
+}
+.tel:hover{background:var(--surf)}
+.btn{
+  font-family:inherit; font-weight:700; font-size:14.5px; cursor:pointer;
+  border-radius:999px; padding:11px 20px; border:1px solid transparent;
+  transition:transform .12s ease, background .16s ease, box-shadow .16s ease;
+  white-space:nowrap;
+}
+.btn:active{transform:scale(.975)}
+.btn-pri{background:var(--brand); color:#fff; box-shadow:0 8px 18px -8px rgba(47,107,255,.7)}
+.btn-pri:hover{background:var(--brand-dk)}
+.btn-gho{background:var(--card-bg); color:var(--ink); border-color:var(--line)}
+.btn-gho:hover{border-color:var(--mute)}
+.btn-lg{padding:15px 26px; font-size:16px; border-radius:var(--r)}
+
+/* ============================== HERO ============================== */
+.hero{
+  background:
+    radial-gradient(90% 120% at 88% 8%, rgba(47,107,255,.10), rgba(47,107,255,0) 60%),
+    linear-gradient(180deg,var(--surf) 0%, var(--bg) 100%);
+  border-bottom:1px solid var(--line);
+  padding-block:clamp(38px,6vw,72px) 0;
+}
+.hero-grid{
+  display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  gap:clamp(24px,4vw,56px); align-items:center;
+}
+.hero h1{
+  font-size:clamp(38px,6.2vw,66px); line-height:.98; letter-spacing:-.045em;
+  font-weight:800; margin:16px 0 0; text-wrap:balance;
+}
+.hero h1 .b{color:var(--brand)}
+.hero .lede{
+  margin:20px 0 0; font-size:clamp(16px,1.5vw,18.5px); color:var(--ink-2);
+  max-width:46ch; line-height:1.6;
+}
+.pills{display:flex; flex-wrap:wrap; gap:9px; margin-top:24px}
+.pill{
+  display:flex; align-items:center; gap:7px; background:var(--card-bg);
+  border:1px solid var(--line); border-radius:999px; padding:7px 14px 7px 10px;
+  font-size:13.5px; font-weight:600; color:var(--ink-2);
+}
+.pill svg{color:var(--ok); flex:0 0 auto}
+
+
+/* The photo area uses the site's own surface tones, so it reads as light on
+   the card rather than as a coloured tile sitting on top of it. The contact
+   shadow lives inside .scaler so it always tracks the car it belongs to. */
+.scaler{display:block; width:100%; position:relative}
+.scaler picture{display:block; width:100%; position:relative; z-index:2}
+.scaler img{display:block; width:100%; height:auto; max-width:100%}
+.scaler img[width]{height:auto}
+.shadow{
+  position:absolute; left:50%; bottom:-13px; transform:translateX(-50%);
+  width:80%; height:17px; border-radius:50%; z-index:1;
+  background:radial-gradient(ellipse at center,
+    rgba(13,27,42,.40) 0%, rgba(13,27,42,.17) 42%, rgba(13,27,42,0) 72%);
+}
+
+.stage{position:relative; padding:16px 6px 40px}
+.stage .shadow{
+  bottom:-20px; width:74%; height:24px;
+  background:radial-gradient(ellipse at center,
+    rgba(13,27,42,.32) 0%, rgba(13,27,42,.13) 44%, rgba(13,27,42,0) 74%);
+}
+.stage img.car{
+  filter:drop-shadow(0 10px 12px rgba(13,27,42,.17));
+  animation:roll 1s cubic-bezier(.16,.9,.28,1) both;
+}
+@keyframes roll{from{opacity:0; transform:translateX(34px)} to{opacity:1; transform:none}}
+.tag{
+  position:absolute; z-index:6; background:var(--card-bg); border-radius:var(--r);
+  padding:10px 15px; box-shadow:var(--card); font-size:13px; font-weight:600;
+}
+.tag b{display:block; font-size:20px; font-weight:800; letter-spacing:-.03em; line-height:1.2}
+.tag.t1{top:0; left:0}
+.tag.t2{bottom:18px; right:0}
+.tag .sm{color:var(--mute); font-weight:500; font-size:12px}
+
+/* filter bar */
+.finder{
+  background:var(--card-bg); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--lift); padding:10px; margin-top:clamp(26px,4vw,48px);
+  position:relative; top:28px; display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr)) auto; gap:8px; align-items:stretch;
+}
+.fld{
+  display:flex; flex-direction:column; gap:2px; padding:10px 14px;
+  border-radius:var(--r); background:var(--card-bg); min-width:0;
+  transition:background .16s ease;
+}
+.fld:hover{background:var(--surf)}
+.fld + .fld{box-shadow:inset 1px 0 0 var(--line)}
+.fld label{
+  font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--mute);
+}
+.fld select, .fld input{
+  font-family:inherit; font-size:15px; font-weight:600; color:var(--ink);
+  border:none; background:none; padding:2px 0; width:100%; min-width:0;
+  appearance:none; -webkit-appearance:none;
+}
+.fld select:focus, .fld input:focus{outline:none}
+.finder .btn{align-self:stretch; display:flex; align-items:center; gap:8px; justify-content:center}
+
+/* ============================== SECTIONS ============================== */
+.sec{padding-block:clamp(56px,7vw,92px)}
+.sec.tight{padding-block:clamp(44px,5vw,64px)}
+.sec-hd{display:flex; align-items:flex-end; justify-content:space-between; gap:20px;
+  flex-wrap:wrap; margin-bottom:28px}
+.sec-hd h2{
+  font-size:clamp(25px,3.4vw,36px); line-height:1.08; letter-spacing:-.035em;
+  font-weight:800; margin:8px 0 0; text-wrap:balance;
+}
+.sec-hd p{margin:9px 0 0; color:var(--mute); max-width:54ch; font-size:16px}
+
+/* categories */
+.cats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px}
+.cat{
+  border:1px solid var(--line); border-radius:var(--r-lg); padding:20px;
+  background:var(--card-bg); display:flex; flex-direction:column; gap:10px;
+  transition:border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.cat:hover{border-color:var(--brand); transform:translateY(-3px); box-shadow:var(--card)}
+.cat .ic{
+  width:42px; height:42px; border-radius:12px; background:var(--brand-wash);
+  display:grid; place-items:center; color:var(--brand);
+}
+.cat h3{margin:4px 0 0; font-size:17px; font-weight:700; letter-spacing:-.02em}
+.cat p{margin:0; font-size:13.5px; color:var(--mute); line-height:1.5; flex:1 1 auto}
+.cat .fr{
+  display:flex; align-items:center; gap:7px;
+  font-size:13.5px; font-weight:700; color:var(--brand); padding-top:4px;
+}
+
+/* ── fleet: filter rail + results ── */
+.fleet-wrap{display:grid; grid-template-columns:252px minmax(0,1fr); gap:30px; align-items:start}
+.filters{
+  border:1px solid var(--line); border-radius:var(--r-lg); background:var(--card-bg);
+  padding:2px 18px 18px; position:sticky;
+  top:calc(env(safe-area-inset-top,0px) + 88px);
+}
+.f-hd{display:flex; align-items:center; justify-content:space-between; padding:16px 0 12px}
+.f-hd h3{margin:0; font-size:15px; font-weight:800; letter-spacing:-.02em}
+.f-clear{
+  font-family:inherit; border:none; background:none; cursor:pointer; padding:0;
+  font-size:13px; font-weight:700; color:var(--brand);
+}
+.f-clear[disabled]{color:var(--mute); cursor:default}
+.f-grp{border-top:1px solid var(--line); padding:14px 0 6px}
+.f-grp h4{
+  margin:0 0 9px; font-size:11.5px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--mute);
+}
+.f-opt{display:flex; align-items:center; gap:10px; padding:5px 0; cursor:pointer;
+  font-size:14.5px; position:relative}
+.f-opt input{position:absolute; opacity:0; width:0; height:0}
+.f-box{
+  width:18px; height:18px; border-radius:5px; border:1.5px solid #D6DEE9;
+  flex:0 0 auto; display:grid; place-items:center;
+  transition:background .15s ease, border-color .15s ease;
+}
+.f-box svg{opacity:0; transition:opacity .15s ease}
+.f-opt input:checked + .f-box{background:var(--brand); border-color:var(--brand)}
+.f-opt input:checked + .f-box svg{opacity:1}
+.f-opt input:focus-visible + .f-box{outline:2px solid var(--brand); outline-offset:2px}
+.f-opt .n{margin-left:auto; font-size:12.5px; color:var(--mute); font-variant-numeric:tabular-nums}
+.f-opt.off{opacity:.45}
+.f-range input[type=range]{width:100%; accent-color:var(--brand); margin:2px 0 0}
+.f-range .val{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:13.5px; font-weight:700; margin-top:2px;
+}
+.f-range .val i{font-style:normal; color:var(--mute); font-weight:500; font-size:12.5px}
+
+.res-bar{display:flex; align-items:center; justify-content:space-between; gap:14px;
+  margin-bottom:16px; flex-wrap:wrap}
+.res-bar .cnt{font-size:14.5px; font-weight:700}
+.res-bar .cnt em{font-style:normal; color:var(--mute); font-weight:500}
+.res-tools{display:flex; align-items:center; gap:10px}
+.res-tools select{
+  font-family:inherit; font-size:14px; font-weight:600; color:var(--ink);
+  border:1px solid var(--line); border-radius:999px; padding:9px 32px 9px 14px;
+  background:var(--card-bg); cursor:pointer; appearance:none; -webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--mute) 50%),
+    linear-gradient(135deg,var(--mute) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+  background-size:5px 5px, 5px 5px; background-repeat:no-repeat;
+}
+.f-btn{display:none}
+.f-done{display:none}
+.f-scrim{display:none}
+.fleet{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px}
+.veh{
+  border:1px solid #EDF0F4; border-radius:var(--r-lg); overflow:hidden;
+  background:var(--card-bg); display:flex; flex-direction:column; text-align:left;
+  font-family:inherit; padding:0; cursor:pointer;
+  transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.veh:hover{border-color:var(--brand); transform:translateY(-4px); box-shadow:var(--lift)}
+/* No panel. The car sits straight on the card and the contact shadow is the
+   only thing holding it down — so the cutout edges have to be clean. */
+.veh .pic{
+  position:relative; padding:16px 18px 26px; aspect-ratio:16/10; overflow:hidden;
+  background:var(--card-bg);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.veh .pic img{filter:drop-shadow(0 5px 6px rgba(13,27,42,.13))}
+.veh .pic .shadow{
+  background:radial-gradient(ellipse at center,
+    rgba(13,27,42,.34) 0%, rgba(13,27,42,.14) 42%, rgba(13,27,42,0) 72%);
+}
+.badge{
+  position:absolute; top:12px; left:12px; color:#fff; font-size:11.5px; font-weight:700;
+  letter-spacing:.02em; padding:5px 10px; border-radius:8px; z-index:5;
+  box-shadow:0 1px 3px rgba(13,27,42,.22);
+}
+.badge.now{background:var(--ok)}
+.badge.soon{background:var(--warn)}
+.badge.booked{background:#7A8899}
+.alsotag{
+  position:absolute; top:12px; right:12px; background:var(--ink); color:#fff;
+  font-size:11px; font-weight:700; letter-spacing:.04em;
+  padding:5px 9px; border-radius:8px; z-index:5;
+  box-shadow:0 1px 3px rgba(13,27,42,.22);
+}
+.veh .bd{padding:15px 17px 17px; display:flex; flex-direction:column; gap:3px; flex:1 1 auto}
+.veh h3{margin:0; font-size:17.5px; font-weight:700; letter-spacing:-.025em}
+.veh .sp{margin:0; font-size:13.5px; color:var(--mute)}
+.veh .ft{
+  display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
+  margin-top:12px; padding-top:13px; border-top:1px solid var(--line);
+}
+.veh .pr b{font-size:23px; font-weight:800; letter-spacing:-.035em}
+.veh .pr span{font-size:13.5px; color:var(--mute); font-weight:500}
+.veh .pr .fin{display:block; font-size:12.5px; color:var(--brand); font-weight:700; margin-top:2px}
+.veh .go{
+  font-size:13.5px; font-weight:700; color:var(--brand);
+  display:flex; align-items:center; gap:5px;
+}
+.empty{
+  grid-column:1/-1; text-align:center; padding:44px 20px; color:var(--mute);
+  border:1px dashed var(--line); border-radius:var(--r-lg); font-size:15px;
+}
+
+/* steps */
+.steps{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px}
+.step{padding:24px; border-radius:var(--r-lg); background:var(--surf)}
+.step .n{
+  width:34px; height:34px; border-radius:11px; background:var(--ink); color:#fff;
+  display:grid; place-items:center; font-weight:800; font-size:15px; margin-bottom:14px;
+}
+.step h3{margin:0 0 6px; font-size:18px; font-weight:700; letter-spacing:-.025em}
+.step p{margin:0; font-size:14.5px; color:var(--ink-2); line-height:1.55}
+
+/* trust */
+.trust{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0;
+  border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden;
+}
+.trust div{padding:22px; background:var(--card-bg)}
+.trust div + div{box-shadow:inset 1px 0 0 var(--line)}
+.trust b{display:block; font-size:16px; font-weight:700; letter-spacing:-.02em}
+.trust span{display:block; font-size:13.5px; color:var(--mute); margin-top:3px}
+.trust .ic{
+  width:38px; height:38px; border-radius:11px; background:var(--brand-wash);
+  display:grid; place-items:center; color:var(--brand); margin-bottom:13px;
+}
+
+/* feature band */
+.band{
+  background:var(--ink); color:#fff; border-radius:var(--r-xl);
+  padding:clamp(28px,4vw,48px); display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:clamp(24px,4vw,44px);
+  align-items:center;
+}
+.band .eyebrow{color:#7FA6FF}
+.band h2{
+  font-size:clamp(25px,3.2vw,36px); line-height:1.08; letter-spacing:-.035em;
+  font-weight:800; margin:10px 0 0; color:#fff;
+}
+.band p{margin:14px 0 0; color:#B4C2D2; font-size:16px; line-height:1.6; max-width:48ch}
+.band .acts{display:flex; gap:10px; flex-wrap:wrap; margin-top:24px}
+.band .btn-gho{background:transparent; color:#fff; border-color:rgba(255,255,255,.26)}
+.band .btn-gho:hover{border-color:#fff}
+.bandcard{background:#16293D; border:1px solid #23394F; border-radius:var(--r-lg); padding:22px}
+.bandcard .hd{font-size:12px; font-weight:700; letter-spacing:.11em;
+  text-transform:uppercase; color:#7FA6FF}
+.bandcard h3{margin:10px 0 0; font-size:20px; font-weight:700; letter-spacing:-.025em}
+.bandcard dl{margin:16px 0 0; display:flex; flex-direction:column; gap:0}
+.bandcard dl div{display:flex; justify-content:space-between; gap:16px; padding-block:11px;
+  border-top:1px solid #23394F; font-size:14.5px}
+.bandcard dt{color:#93A4B8}
+.bandcard dd{margin:0; font-weight:700}
+.bandcard .fine{margin:14px 0 0; font-size:12.5px; color:#8598AD; line-height:1.5}
+
+/* footer */
+.ftr{background:var(--surf); border-top:1px solid var(--line); padding-block:48px 34px}
+.ftr-grid{display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:28px}
+.ftr h4{margin:0 0 12px; font-size:13px; font-weight:700; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--mute)}
+.ftr ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px}
+.ftr a, .ftr li{font-size:14.5px; color:var(--ink-2)}
+.ftr a:hover{color:var(--brand)}
+.ftr .about p{margin:12px 0 0; font-size:14.5px; color:var(--mute); max-width:34ch; line-height:1.6}
+.ftr-btm{
+  margin-top:34px; padding-top:20px; border-top:1px solid var(--line);
+  display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  font-size:13px; color:var(--mute);
+}
+
+/* ============================== VEHICLE SHEET ============================== */
+.scrim{
+  position:fixed; inset:0; z-index:100; background:rgba(13,27,42,.52);
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  display:grid; place-items:center; padding:24px; animation:fade .2s ease both;
+}
+@keyframes fade{from{opacity:0} to{opacity:1}}
+.sheet{
+  background:var(--card-bg); border-radius:var(--r-xl); width:min(940px,100%);
+  max-height:min(88vh,880px); overflow:hidden; box-shadow:var(--lift);
+  display:grid; grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
+  animation:pop .26s cubic-bezier(.18,.86,.28,1) both;
+}
+@keyframes pop{from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:none}}
+.sheet-l{
+  background:var(--card-bg); border-right:1px solid var(--line);
+  padding:24px 20px 32px;
+  display:flex; flex-direction:column; gap:26px; overflow-y:auto;
+}
+.sheet-l .scaler{margin-block:auto}
+.sheet-l .shadow{bottom:-15px; width:78%; height:19px}
+.sheet-l img.car{filter:drop-shadow(0 6px 8px rgba(13,27,42,.16))}
+.sheet-specs{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+.sheet-specs div{background:var(--surf-2); border-radius:var(--r-sm); padding:9px 11px}
+.sheet-specs dt{font-size:10.5px; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--mute)}
+.sheet-specs dd{margin:2px 0 0; font-size:14.5px; font-weight:700; letter-spacing:-.02em}
+.sheet-r{padding:24px 24px 26px; overflow-y:auto; display:flex; flex-direction:column}
+.sheet-hd{display:flex; align-items:flex-start; gap:14px}
+.sheet-hd h2{margin:6px 0 0; font-size:25px; font-weight:800; letter-spacing:-.035em;
+  line-height:1.1}
+.x{
+  flex:0 0 auto; width:36px; height:36px; border-radius:50%; border:none; cursor:pointer;
+  background:var(--surf); color:var(--ink); font-size:17px; line-height:1;
+}
+.x:hover{background:var(--surf-2)}
+.sheet-pr{display:flex; align-items:baseline; gap:6px; margin-top:12px; flex-wrap:wrap}
+.sheet-pr b{font-size:32px; font-weight:800; letter-spacing:-.04em}
+.sheet-pr span{color:var(--mute); font-size:15px}
+.sheet-fin{
+  margin:8px 0 0; font-size:13.5px; color:var(--brand); font-weight:700;
+}
+.crossover{
+  margin-top:12px; display:flex; align-items:center; justify-content:space-between;
+  gap:12px; background:var(--brand-wash); border:1px solid #D5E1FF;
+  border-radius:var(--r); padding:11px 14px; font-size:14px; font-weight:600;
+  color:var(--brand-dk); flex-wrap:wrap;
+}
+.crossover button{
+  font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+  background:var(--brand); color:#fff; border:none; border-radius:999px; padding:8px 15px;
+}
+.frm{display:flex; flex-direction:column; gap:12px; margin-top:18px}
+.frm .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.f{display:flex; flex-direction:column; gap:5px; min-width:0}
+.f label{font-size:12.5px; font-weight:700; color:var(--ink-2)}
+.f input, .f select, .f textarea{
+  font-family:inherit; font-size:15px; color:var(--ink); background:var(--card-bg);
+  border:1px solid var(--line); border-radius:var(--r-sm); padding:11px 12px;
+  width:100%; min-width:0;
+}
+.f textarea{resize:vertical; min-height:66px; line-height:1.5}
+.f input:focus, .f select:focus, .f textarea:focus{
+  outline:none; border-color:var(--brand); box-shadow:var(--ring);
+}
+.chk{display:flex; align-items:center; gap:9px; font-size:14px; font-weight:600}
+.chk input{width:auto; min-width:0}
+.frm-acts{display:flex; gap:9px; margin-top:4px; flex-wrap:wrap}
+.frm-acts .btn-pri{flex:1 1 180px}
+.icb{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  border:1px solid var(--line); background:var(--card-bg); border-radius:999px;
+  padding:11px 16px; font-size:14px; font-weight:700; cursor:pointer;
+  font-family:inherit; color:var(--ink);
+}
+.icb:hover{border-color:var(--mute)}
+.fine{margin:12px 0 0; font-size:12.5px; color:var(--mute); line-height:1.5}
+.sent{
+  margin-top:14px; background:#E7F8F0; border:1px solid #B6E7D0; color:#07553A;
+  border-radius:var(--r); padding:13px 15px; font-size:14.5px; font-weight:600;
+}
+
+/* ============================== APP CHROME (mobile) ============================== */
+.tabbar{display:none}
+.install{display:none}
+
+/* ============================== RESPONSIVE ============================== */
+@media (max-width:1240px){
+  .hdr-in{gap:12px}
+  .nav a{padding:8px 9px; font-size:13.5px}
+  .tel{display:none}
+}
+@media (min-width:1400px){
+  .fleet{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:1040px){
+  .nav{display:none}
+  .cats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fleet-wrap{grid-template-columns:minmax(0,1fr); gap:0}
+  .f-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:var(--card-bg); color:var(--ink);
+    border-radius:999px; padding:9px 15px;
+  }
+  .f-btn b{background:var(--brand); color:#fff; border-radius:999px;
+    padding:1px 7px; font-size:12px; font-weight:700}
+  .filters{
+    position:fixed; left:0; right:0; bottom:0; top:auto; z-index:110;
+    border-radius:var(--r-xl) var(--r-xl) 0 0; border:none;
+    max-height:84svh; overflow-y:auto; box-shadow:var(--lift);
+    transform:translateY(101%); transition:transform .3s cubic-bezier(.18,.86,.28,1);
+    padding:2px 20px calc(20px + env(safe-area-inset-bottom,0px));
+  }
+  .filters.open{transform:none}
+  .f-scrim{
+    display:block; position:fixed; inset:0; z-index:105;
+    background:rgba(13,27,42,.45); opacity:0; pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  .f-scrim.on{opacity:1; pointer-events:auto}
+  .f-done{
+    display:block; width:100%; margin-top:18px; border:none; border-radius:var(--r);
+    background:var(--brand); color:#fff; font-family:inherit; font-weight:700;
+    font-size:15px; padding:14px; cursor:pointer;
+  }
+  .trust{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .trust div:nth-child(3){box-shadow:inset 0 1px 0 var(--line)}
+  .trust div:nth-child(4){box-shadow:inset 1px 0 0 var(--line), inset 0 1px 0 var(--line)}
+  .ftr-grid{grid-template-columns:1fr 1fr}
+  .finder{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .finder .btn{grid-column:1/-1}
+  .fld + .fld{box-shadow:none}
+  .band{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:860px){
+  .hero-grid{grid-template-columns:minmax(0,1fr)}
+  .stage{order:-1}
+  .sheet{grid-template-columns:minmax(0,1fr)}
+
+  body{padding-bottom:calc(62px + env(safe-area-inset-bottom,0px))}
+  .hdr-in{height:60px}
+  .steps{grid-template-columns:minmax(0,1fr)}
+
+  .install{
+    display:flex; align-items:center; gap:12px; background:var(--brand-wash);
+    border-bottom:1px solid #D5E1FF; padding:10px var(--gut);
+    font-size:13.5px; color:var(--brand-dk); font-weight:600;
+  }
+  .install .btn{padding:7px 14px; font-size:13px}
+  .install .grow{flex:1 1 auto; min-width:0}
+
+  .tabbar{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:70;
+    background:rgba(255,255,255,.95); backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .tabbar a{
+    flex:1; text-align:center; padding:9px 0 11px; font-size:10.5px; font-weight:600;
+    color:var(--mute);
+  }
+  .tabbar a.on{color:var(--brand)}
+  .tabbar svg{display:block; margin:0 auto 3px}
+
+  .scrim{padding:0; place-items:end stretch}
+  .sheet{
+    width:100%; max-width:none; max-height:94svh; border-radius:var(--r-xl) var(--r-xl) 0 0;
+    animation:slideup .3s cubic-bezier(.18,.86,.28,1) both; overflow-y:auto;
+  }
+  @keyframes slideup{from{transform:translateY(100%)} to{transform:none}}
+  .sheet-l, .sheet-r{overflow:visible}
+  .sheet-l{padding:18px; border-right:none; border-bottom:1px solid var(--line)}
+  .sheet-l .scaler{max-width:320px; margin-inline:auto}
+  .sheet-r{padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:620px){
+  .brand span.word{display:none}
+  .modesw button{padding:7px 13px}
+}
+@media (max-width:560px){
+  .cats{grid-template-columns:minmax(0,1fr)}
+  .fleet{grid-template-columns:minmax(0,1fr)}
+  .trust{grid-template-columns:minmax(0,1fr)}
+  .trust div + div{box-shadow:inset 0 1px 0 var(--line)}
+  .ftr-grid{grid-template-columns:1fr}
+  .finder{grid-template-columns:minmax(0,1fr); top:22px}
+  .frm .two{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<!-- ══════════════════════════ HEADER ══════════════════════════ -->
+<header class="hdr">
+  <div class="install">
+    <span class="grow">Add Racing to your home screen &mdash; hire and yard stock in one app.</span>
+    <button class="btn btn-pri" type="button">Add</button>
+  </div>
+  <div class="shell hdr-in">
+    <a class="brand" href="#top">
+      <span class="mk">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16M6 17v-4l2-5h8l2 5v4"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
+      </span>
+      <span class="word">Racing <span class="arm" data-arm="hire">Rentals</span><span class="arm" data-arm="buy">Sales</span></span>
+    </a>
+
+    <div class="modesw" role="group" aria-label="Hire or buy">
+      <button type="button" id="mHire" aria-pressed="true">Hire</button>
+      <button type="button" id="mBuy" aria-pressed="false">Buy</button>
+    </div>
+
+    <nav class="nav" data-arm="hire">
+      <a class="on" href="#fleet">Cars</a>
+      <a href="#fleet">Vans &amp; moving</a>
+      <a href="#band">Rent to own</a>
+      <a href="#how">How it works</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <nav class="nav" data-arm="buy">
+      <a class="on" href="#fleet">Stock</a>
+      <a href="#band">Finance</a>
+      <a href="#band">Trade-in</a>
+      <a href="#how">How it works</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="hdr-cta">
+      <a class="tel" href="tel:+61000000000">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5h5l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v5H5Z"/></svg>
+        (02) 0000 0000
+      </a>
+      <button class="btn btn-pri" type="button" data-open="corolla" data-arm="hire">Enquire</button>
+      <button class="btn btn-pri" type="button" data-open="corolla" data-arm="buy">Book a test drive</button>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════ HERO ══════════════════════════ -->
+<section class="hero" id="top">
+  <div class="shell">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow" data-arm="hire">Sydney &middot; daily, weekly &amp; long term</p>
+        <p class="eyebrow" data-arm="buy">Sydney car yard &middot; drive away this week</p>
+
+        <h1 data-arm="hire">Rent. Drive.<br><span class="b">Own.</span></h1>
+        <h1 data-arm="buy">Find your<br><span class="b">next car.</span></h1>
+
+        <p class="lede" data-arm="hire">A small, well-kept fleet &mdash; economy hatches,
+          rideshare-ready runabouts, family SUVs and a prestige pair for the weekend. Tell us what
+          you need and we'll have keys ready the same day.</p>
+        <p class="lede" data-arm="buy">The same cars we hire out, priced to drive away. Every one
+          has been serviced and maintained by us, so you can see exactly what it's been through.</p>
+
+        <div class="pills" data-arm="hire">
+          <span class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>No hidden fees</span>
+          <span class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>Rideshare approved</span>
+          <span class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>Rent-to-own available</span>
+        </div>
+        <div class="pills" data-arm="buy">
+          <span class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>Full service history</span>
+          <span class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>Trade-ins welcome</span>
+          <span class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>Finance available</span>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="tag t1" data-arm="hire"><span class="sm">Economy from</span><b class="tnum">$249</b><span class="sm">per week</span></span>
+        <span class="tag t2" data-arm="hire"><span class="sm">Prestige from</span><b class="tnum">$399</b><span class="sm">per week</span></span>
+        <span class="tag t1" data-arm="buy"><span class="sm">Yard stock from</span><b class="tnum">$8,490</b><span class="sm">drive away</span></span>
+        <span class="tag t2" data-arm="buy"><span class="sm">Finance from</span><b class="tnum">$40</b><span class="sm">per week*</span></span>
+        <span class="scaler">
+          <picture>
+            <source srcset="cars/bmw-1-760.avif 760w, cars/bmw-1-1400.avif 1400w"
+                    sizes="(max-width:860px) 96vw, 640px" type="image/avif">
+            <img class="car" src="cars/bmw-1-760.png" width="1400" height="810"
+                 alt="BMW 1 Series Sport from the Racing fleet">
+          </picture>
+          <span class="shadow"></span>
+        </span>
+      </div>
+    </div>
+
+    <form class="finder" id="finder">
+      <div class="fld">
+        <label for="f-need">What do you need?</label>
+        <select id="f-need" name="need">
+          <option>Any vehicle</option>
+          <option>Economy car</option>
+          <option>Rideshare &amp; everyday</option>
+          <option>Family &amp; SUV</option>
+          <option>Prestige</option>
+          <option>Van &amp; moving</option>
+        </select>
+      </div>
+
+      <div class="fld" data-arm="hire">
+        <label for="f-from">Pick up</label>
+        <input id="f-from" name="from" type="date" value="2026-09-17">
+      </div>
+      <div class="fld" data-arm="hire">
+        <label for="f-len">How long?</label>
+        <select id="f-len" name="len">
+          <option>1 week</option>
+          <option>A few days</option>
+          <option>2&ndash;4 weeks</option>
+          <option>Long term / ongoing</option>
+        </select>
+      </div>
+
+      <div class="fld" data-arm="buy">
+        <label for="f-budget">Budget</label>
+        <select id="f-budget" name="budget">
+          <option>Any price</option>
+          <option>Under $10,000</option>
+          <option>$10,000 &ndash; $15,000</option>
+          <option>$15,000 &ndash; $30,000</option>
+        </select>
+      </div>
+      <div class="fld" data-arm="buy">
+        <label for="f-trade">Trading in?</label>
+        <select id="f-trade" name="trade">
+          <option>No trade-in</option>
+          <option>Yes &mdash; I have a car</option>
+          <option>Not sure yet</option>
+        </select>
+      </div>
+
+      <button class="btn btn-pri btn-lg" type="submit">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span data-arm="hire">Find vehicles</span><span data-arm="buy">Find a car</span>
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- ══════════════════════════ CATEGORIES ══════════════════════════ -->
+<section class="sec tight shell">
+  <div class="sec-hd">
+    <div>
+      <p class="eyebrow">Choose by need</p>
+      <h2 data-arm="hire">What are you using it for?</h2>
+      <h2 data-arm="buy">What are you shopping for?</h2>
+    </div>
+  </div>
+  <div class="cats" id="cats"></div>
+</section>
+
+<!-- ══════════════════════════ FLEET ══════════════════════════ -->
+<section class="sec shell" id="fleet">
+  <div class="sec-hd">
+    <div>
+      <p class="eyebrow" data-arm="hire">The fleet</p>
+      <p class="eyebrow" data-arm="buy">The yard</p>
+      <h2 data-arm="hire">What's available to hire</h2>
+      <h2 data-arm="buy">What's for sale right now</h2>
+      <p data-arm="hire">Tap any vehicle for full specs and to send an enquiry.</p>
+      <p data-arm="buy">Tap any car for specs, price and to book a test drive.</p>
+    </div>
+  </div>
+
+  <div class="fleet-wrap">
+    <aside class="filters" id="filters" aria-label="Filter vehicles">
+      <div class="f-hd">
+        <h3>Filter</h3>
+        <button class="f-clear" type="button" id="fClear">Clear all</button>
+      </div>
+      <div id="fBody"></div>
+      <button class="f-done" type="button" id="fDone">Show results</button>
+    </aside>
+
+    <div class="results">
+      <div class="res-bar">
+        <span class="cnt" id="fCount"></span>
+        <div class="res-tools">
+          <button class="f-btn" type="button" id="fOpen">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            Filters <b id="fBadge" hidden>0</b>
+          </button>
+          <select id="fSort" aria-label="Sort vehicles"></select>
+        </div>
+      </div>
+      <div class="fleet" id="fleet-grid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ HOW IT WORKS ══════════════════════════ -->
+<section class="sec tight shell" id="how">
+  <div class="sec-hd">
+    <div>
+      <p class="eyebrow">How it works</p>
+      <h2 data-arm="hire">Three steps, no account needed</h2>
+      <h2 data-arm="buy">Three steps to the keys</h2>
+    </div>
+  </div>
+
+  <div class="steps" data-arm="hire">
+    <div class="step"><span class="n">1</span><h3>Pick a vehicle</h3>
+      <p>Browse what's available and check the weekly rate. Every car listed is one of ours,
+        photographed on the day it came in.</p></div>
+    <div class="step"><span class="n">2</span><h3>Send an enquiry</h3>
+      <p>Tell us your dates and how long you've held your licence. We'll come back the same day
+        with a confirmed price and what to bring.</p></div>
+    <div class="step"><span class="n">3</span><h3>Collect the keys</h3>
+      <p>Bring your licence and a form of payment. Sign, do a quick walk-around, and drive away.</p></div>
+  </div>
+
+  <div class="steps" data-arm="buy">
+    <div class="step"><span class="n">1</span><h3>Find a car</h3>
+      <p>Every car in the yard shows its year, kilometres and drive-away price up front. No
+        "contact for price".</p></div>
+    <div class="step"><span class="n">2</span><h3>Book a test drive</h3>
+      <p>Pick a day that suits. Bring your licence. We'll have the car ready, the service history
+        out, and answer anything you want to ask.</p></div>
+    <div class="step"><span class="n">3</span><h3>Drive it away</h3>
+      <p>Pay outright or apply for finance. We handle the transfer paperwork and can take your
+        old car as a trade-in.</p></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ TRUST ══════════════════════════ -->
+<section class="sec tight shell">
+  <div class="trust" data-arm="hire">
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 3.6H20.4v7.6l-8.8 8.8a1.7 1.7 0 0 1-2.4 0l-5.2-5.2a1.7 1.7 0 0 1 0-2.4Z"/><circle cx="16.5" cy="7.5" r="1.3"/></svg></span>
+      <b>Affordable rates</b><span>Cars from $249 a week</span></div>
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></span>
+      <b>Flexible terms</b><span>Daily, weekly or long term</span></div>
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 19.5 6v6c0 4.4-3.1 7.6-7.5 8.8C7.6 19.6 4.5 16.4 4.5 12V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></span>
+      <b>Well maintained</b><span>Serviced, clean and roadworthy</span></div>
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.6" cy="12" r="3.8"/><path d="M11.4 12H21"/><path d="M18.2 12v3.1"/><path d="M15.1 12v2.3"/></svg></span>
+      <b>Rent to own</b><span>On selected vehicles</span></div>
+  </div>
+
+  <div class="trust" data-arm="buy">
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 3.6H20.4v7.6l-8.8 8.8a1.7 1.7 0 0 1-2.4 0l-5.2-5.2a1.7 1.7 0 0 1 0-2.4Z"/><circle cx="16.5" cy="7.5" r="1.3"/></svg></span>
+      <b>Prices up front</b><span>Drive-away, nothing hidden</span></div>
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="5.8" width="18.4" height="12.4" rx="2.6"/><path d="M2.8 10.4h18.4"/><path d="M6.6 14.7h3.8"/></svg></span>
+      <b>Finance available</b><span>Apply through our broker</span></div>
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 9.2h13.2l-3.4-3.4"/><path d="M20.4 14.8H7.2l3.4 3.4"/></svg></span>
+      <b>Trade-ins welcome</b><span>We'll price your old car</span></div>
+    <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 19.5 6v6c0 4.4-3.1 7.6-7.5 8.8C7.6 19.6 4.5 16.4 4.5 12V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></span>
+      <b>Our own service history</b><span>We maintained these cars</span></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ FEATURE BAND ══════════════════════════ -->
+<section class="sec tight shell" id="band">
+  <div class="band" data-arm="hire">
+    <div>
+      <p class="eyebrow">Rent to own</p>
+      <h2>Drive it now. Own it later.</h2>
+      <p>Some of our vehicles can be rented on a path to ownership instead of handing the keys
+        back. You rent it the normal way, and a portion of what you pay each week goes toward
+        owning it outright. Eligibility is per vehicle &mdash; ask us which ones qualify.</p>
+      <div class="acts">
+        <button class="btn btn-pri btn-lg" type="button" data-open="corolla">See an eligible car</button>
+        <button class="btn btn-gho btn-lg" type="button" data-mode="buy">Or just buy one outright</button>
+      </div>
+    </div>
+    <div class="bandcard">
+      <p class="hd">Example eligible vehicle</p>
+      <h3>Toyota Corolla Hatch</h3>
+      <dl>
+        <div><dt>Weekly rental</dt><dd class="tnum">$249</dd></div>
+        <div><dt>Or buy outright</dt><dd class="tnum">$11,990</dd></div>
+        <div><dt>Ownership option</dt><dd>Shown on the car's page</dd></div>
+      </dl>
+      <p class="fine">Example only. Rates, eligibility and ownership terms are confirmed in writing
+        before anything is signed.</p>
+    </div>
+  </div>
+
+  <div class="band" data-arm="buy">
+    <div>
+      <p class="eyebrow">Trade-in &amp; finance</p>
+      <h2>Bring your old car. Drive the new one home.</h2>
+      <p>We'll value your current car against anything in the yard and handle the changeover in
+        one visit. If you'd rather spread the cost, we can put you in front of a finance broker
+        &mdash; no obligation, and you'll see the full cost before you sign anything.</p>
+      <div class="acts">
+        <button class="btn btn-pri btn-lg" type="button" data-open="commodore">Get a trade-in price</button>
+        <button class="btn btn-gho btn-lg" type="button" data-mode="hire">Or hire one first</button>
+      </div>
+    </div>
+    <div class="bandcard">
+      <p class="hd">Worked example</p>
+      <h3>Holden Commodore</h3>
+      <dl>
+        <div><dt>Drive-away</dt><dd class="tnum">$9,990</dd></div>
+        <div><dt>Less trade-in</dt><dd class="tnum">&minus; your car</dd></div>
+        <div><dt>Finance from</dt><dd class="tnum">$47 / week*</dd></div>
+      </dl>
+      <p class="fine">*Illustration only, not a quote or an offer of credit. Actual repayments
+        depend on the amount financed, the term, fees and your circumstances, and are set by the
+        lender &mdash; not by us.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ FOOTER ══════════════════════════ -->
+<footer class="ftr" id="contact">
+  <div class="shell">
+    <div class="ftr-grid">
+      <div class="about">
+        <a class="brand" href="#top">
+          <span class="mk">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16M6 17v-4l2-5h8l2 5v4"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
+          </span>
+          <span class="word">Racing</span>
+        </a>
+        <p>Car hire and a used car yard under one roof in Sydney. Rent it, buy it, or rent it
+          until you own it.</p>
+      </div>
+      <div>
+        <h4>Racing Rentals</h4>
+        <ul>
+          <li><a href="#fleet" data-mode="hire">Economy</a></li>
+          <li><a href="#fleet" data-mode="hire">Rideshare &amp; everyday</a></li>
+          <li><a href="#fleet" data-mode="hire">Family &amp; SUV</a></li>
+          <li><a href="#fleet" data-mode="hire">Prestige</a></li>
+          <li><a href="#band" data-mode="hire">Rent to own</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Racing Sales</h4>
+        <ul>
+          <li><a href="#fleet" data-mode="buy">Cars in the yard</a></li>
+          <li><a href="#band" data-mode="buy">Finance</a></li>
+          <li><a href="#band" data-mode="buy">Trade-in</a></li>
+          <li><a href="#how" data-mode="buy">Book a test drive</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Get in touch</h4>
+        <ul>
+          <li><a href="tel:+61000000000">(02) 0000 0000</a></li>
+          <li><a href="#contact">WhatsApp us</a></li>
+          <li><a href="#contact">hello@racingrentals.com.au</a></li>
+          <li>Mon&ndash;Fri 8am&ndash;5pm</li>
+          <li>Sat 9am&ndash;1pm</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ftr-btm">
+      <span>&copy; 2026 Racing Rentals &amp; Racing Sales</span>
+      <span>Design concept. Vehicle images are studio renders, not photographs of the
+        individual cars. Prices, kilometres, rego dates, finance figures and contact details
+        are placeholders.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="f-scrim" id="fScrim"></div>
+<nav class="tabbar" id="tabbar"></nav>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ═════════════════ data ═════════════════
+     Cars are real and photographed by the owner. Everything financial is a
+     placeholder. Odometers marked REAL were read off the dashboard photos.   */
+  var FLEET = [
+    {id:"swift", name:"Suzuki Swift Sport", img:"swift", ih:867, year:2010, cat:"economy", body:"hatch", state:"now",
+     blurb:"Sport hatch · Petrol · 3-door",
+     hire:null,
+     sale:{price:8990, weekly:42, odo:"148,000", rego:"Mar 2027"},
+     specs:[["Body","3-door hatch"],["Fuel","Petrol"],["Seats","4"],["Best for","City runs"]]},
+
+    {id:"corolla", name:"Toyota Corolla Hatch", img:"corolla", ih:839, year:2011, cat:"economy", body:"hatch", state:"now",
+     blurb:"5-door hatch · Petrol · Automatic",
+     hire:{price:249, rto:true},
+     sale:{price:11990, weekly:56, odo:"141,514", rego:"Jun 2027"},   // odo REAL
+     specs:[["Body","5-door hatch"],["Fuel","Petrol"],["Seats","5"],["Ownership","Rent-to-own"]]},
+
+    {id:"focus", name:"Ford Focus Trend", img:"focus", ih:844, year:2016, cat:"rideshare", body:"hatch", state:"now",
+     blurb:"EcoBoost · Petrol · Automatic",
+     hire:{price:259},
+     sale:{price:13990, weekly:65, odo:"92,894", rego:"Sep 2027"},    // odo REAL
+     specs:[["Engine","EcoBoost petrol"],["Body","5-door hatch"],["Seats","5"],["Best for","Everyday"]]},
+
+    {id:"commodore", name:"Holden Commodore", img:"commodore", ih:836, year:2008, cat:"family", body:"sedan", state:"now",
+     blurb:"Large sedan · Automatic · Petrol",
+     hire:{price:289},
+     sale:{price:9990, weekly:47, odo:"187,000", rego:"Jan 2027"},
+     specs:[["Body","Large sedan"],["Transmission","Automatic"],["Seats","5"],["Best for","Space"]]},
+
+    {id:"territory", name:"Ford Territory AWD", img:"territory", ih:858, year:2008, cat:"family", body:"suv", state:"now",
+     blurb:"AWD SUV · Turbo · Automatic",
+     hire:{price:339},
+     sale:{price:8490, weekly:40, odo:"320,253", rego:"Nov 2026"},    // odo REAL
+     specs:[["Drive","All-wheel drive"],["Engine","Turbo petrol"],["Seats","5"],["Best for","Family"]]},
+
+    {id:"bmw-1", name:"BMW 1 Series Sport", img:"bmw-1", ih:810, year:2017, cat:"prestige", body:"hatch", state:"now",
+     blurb:"Sport hatch · Automatic · Leather",
+     hire:{price:399},
+     sale:null,
+     specs:[["Body","Sport hatch"],["Transmission","Automatic"],["Interior","Leather"],["Best for","Weekends"]]},
+
+    {id:"macan", name:"Porsche Macan", img:"macan", ih:904, year:2015, cat:"prestige", body:"suv", state:"now",
+     blurb:"Prestige SUV · All-wheel drive · Automatic",
+     hire:{price:599},
+     sale:{price:44990, weekly:209, odo:"96,000", rego:"May 2027"},
+     specs:[["Body","Prestige SUV"],["Drive","All-wheel drive"],["Seats","5"],["Best for","Occasions"]]},
+
+    {id:"cayenne", name:"Porsche Cayenne", img:"cayenne", ih:840, year:2011, cat:"prestige", body:"suv", state:"soon", soonDate:"24 Sep",
+     blurb:"Prestige SUV · All-wheel drive",
+     hire:{price:549},
+     sale:{price:29990, weekly:139, odo:"164,000", rego:"Apr 2027"},
+     specs:[["Body","Prestige SUV"],["Drive","All-wheel drive"],["Seats","5"],["Best for","Occasions"]]}
+  ];
+
+  var CATS = {
+    hire: [
+      ["pump", "Economy",             "Small hatches for work, deliveries and everyday running around.", "From $249/week"],
+      ["wheel", "Rideshare &amp; everyday", "Frugal, comfortable cars built for long hours behind the wheel.", "From $259/week"],
+      ["suv",  "Family &amp; SUV",    "Room for kids, luggage, tools and weekends away.", "From $289/week"],
+      ["star", "Prestige",            "A BMW and a Cayenne for weddings, weekends and the occasional show-off.", "From $399/week"]
+    ],
+    buy: [
+      ["pump", "Economy",             "Cheap to run, cheap to insure, easy to park. First-car territory.", "From $8,990"],
+      ["wheel", "Rideshare &amp; everyday", "Low running costs and the kilometres to prove they keep going.", "From $13,990"],
+      ["suv",  "Family &amp; SUV",    "Seven years of school runs left in them, at a sensible price.", "From $8,490"],
+      ["star", "Prestige",            "European metal without the European dealership price.", "From $29,990"]
+    ]
+  };
+
+  var ICONS = {
+    pump:  '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5V6.2A2.2 2.2 0 0 1 6.2 4h5.6A2.2 2.2 0 0 1 14 6.2v14.3"/><path d="M2.8 20.5h12.4"/><path d="M6.7 8.2h4.6v3.3H6.7z"/><path d="M14 10.6h3.1a1.8 1.8 0 0 1 1.8 1.8v4.2a1.6 1.6 0 0 0 3.1 0V10l-2.5-2.5"/></svg>',
+    wheel: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3.4v6.1M4.6 16.3l5.2-3M19.4 16.3l-5.2-3"/></svg>',
+    suv:   '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.6h18"/><path d="M5.4 16.6v-4.9l1.9-4.4h9.4l1.9 4.4v4.9"/><path d="M7.7 7.3V5.6h8.6v1.7"/><circle cx="8.2" cy="17.1" r="2"/><circle cx="15.8" cy="17.1" r="2"/></svg>',
+    star:  '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4L4.2 9.7l5.4-.8Z"/></svg>'
+  };
+  var ARROW = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h13m-5-6 6 6-6 6"/></svg>';
+
+  var TABS = {
+    hire: [["browse","Browse"],["van","Vans"],["own","Own"],["call","Contact"]],
+    buy:  [["browse","Stock"],["tag","Finance"],["swap","Trade-in"],["call","Contact"]]
+  };
+  var TABICON = {
+    browse:'<path d="M4 17h16M6 17v-4l2-5h8l2 5v4"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/>',
+    van:'<rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11h3l2 3v3h-5"/>',
+    own:'<circle cx="7.6" cy="12" r="3.8"/><path d="M11.4 12H21"/><path d="M18.2 12v3.1"/><path d="M15.1 12v2.3"/>',
+    tag:'<rect x="2.8" y="5.8" width="18.4" height="12.4" rx="2.6"/><path d="M2.8 10.4h18.4"/><path d="M6.6 14.7h3.8"/>',
+    swap:'<path d="M3.6 9.2h13.2l-3.4-3.4"/><path d="M20.4 14.8H7.2l3.4 3.4"/>',
+    call:'<path d="M5 5h5l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v5H5Z"/>'
+  };
+
+  /* ═════════════════ mode ═════════════════ */
+  var mode = "hire";
+  var F = {type:{}, body:{}, maxPrice:null, maxKm:null, nowOnly:false};
+  var SORT = "price-asc";
+
+  var TYPE_LABELS = {economy:"Economy", rideshare:"Rideshare &amp; everyday",
+                     family:"Family &amp; SUV", prestige:"Prestige", van:"Vans &amp; moving"};
+  var BODY_LABELS = {hatch:"Hatch", sedan:"Sedan", suv:"SUV"};
+  var KM_CAP = 350000;
+  var TICK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" ' +
+             'stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">' +
+             '<path d="m5 13 4 4L19 7"/></svg>';
+  try {
+    var saved = localStorage.getItem("racing_mode");
+    if (saved === "buy" || saved === "hire") mode = saved;
+  } catch (e) {}
+  if (location.hash === "#buy") mode = "buy";
+  if (location.hash === "#hire") mode = "hire";
+
+  function money(n){ return "$" + n.toLocaleString("en-AU"); }
+  function inMode(v){ return mode === "buy" ? !!v.sale : !!v.hire; }
+  function priceOf(v){ return mode === "buy" ? v.sale.price : v.hire.price; }
+  function kmOf(v){
+    return v.sale ? (parseInt(String(v.sale.odo).replace(/[^0-9]/g, ""), 10) || 0) : 0;
+  }
+  function priceCap(){ return mode === "buy" ? 35000 : 600; }
+  function priceStep(){ return mode === "buy" ? 500 : 10; }
+  function capLabel(v){ return mode === "buy" ? money(v) : "$" + v + " / week"; }
+  function onKeys(o){ return Object.keys(o).filter(function(k){ return o[k]; }); }
+
+  /* One matcher for everything. `skip` leaves a facet out so its own option
+     counts show what you'd get by ticking it, not what you have now. */
+  function matches(v, skip){
+    if (!inMode(v)) return false;
+    var t = onKeys(F.type);
+    if (skip !== "type" && t.length && t.indexOf(v.cat) === -1) return false;
+    var b = onKeys(F.body);
+    if (skip !== "body" && b.length && b.indexOf(v.body) === -1) return false;
+    if (skip !== "price" && F.maxPrice != null && priceOf(v) > F.maxPrice) return false;
+    if (skip !== "km" && mode === "buy" && F.maxKm != null && kmOf(v) > F.maxKm) return false;
+    if (skip !== "avail" && F.nowOnly && v.state !== "now") return false;
+    return true;
+  }
+  function activeCount(){
+    return onKeys(F.type).length + onKeys(F.body).length +
+      (F.maxPrice != null ? 1 : 0) + (F.maxKm != null ? 1 : 0) + (F.nowOnly ? 1 : 0);
+  }
+  var SORTERS = {
+    "price-asc":  function(a, b){ return priceOf(a) - priceOf(b); },
+    "price-desc": function(a, b){ return priceOf(b) - priceOf(a); },
+    "year-desc":  function(a, b){ return b.year - a.year; },
+    "km-asc":     function(a, b){ return kmOf(a) - kmOf(b); }
+  };
+
+  function setMode(next, scrollTo){
+    if (next !== "hire" && next !== "buy") return;
+    mode = next;
+    document.body.classList.toggle("mode-buy", mode === "buy");
+    document.getElementById("mHire").setAttribute("aria-pressed", String(mode === "hire"));
+    document.getElementById("mBuy").setAttribute("aria-pressed", String(mode === "buy"));
+    try { localStorage.setItem("racing_mode", mode); } catch (e) {}
+    F.maxPrice = null; F.maxKm = null;   // the caps mean different things per arm
+    renderCats(); renderSort(); refresh(); renderTabs();
+    if (scrollTo) {
+      var el = document.querySelector(scrollTo);
+      if (el) el.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+  }
+
+  /* ═════════════════ render ═════════════════ */
+  function renderCats(){
+    var host = document.getElementById("cats");
+    host.innerHTML = CATS[mode].map(function(c){
+      return '<a class="cat" href="#fleet">' +
+        '<span class="ic">' + ICONS[c[0]] + '</span>' +
+        '<h3>' + c[1] + '</h3><p>' + c[2] + '</p>' +
+        '<span class="fr">' + c[3] + ' ' + ARROW + '</span></a>';
+    }).join("");
+  }
+
+  function cardFor(v, idx){
+    var b = document.createElement("button");
+    b.className = "veh";
+    b.type = "button";
+    b.setAttribute("data-open", v.id);
+
+    var priceHTML, alsoTag = "", badge;
+    if (mode === "buy") {
+      priceHTML = '<b class="tnum">' + money(v.sale.price) + '</b> <span>drive away</span>' +
+                  '<span class="fin tnum">Finance from $' + v.sale.weekly + '/week*</span>';
+      badge = '<span class="badge now">' + v.year + ' · ' + v.sale.odo + ' km</span>';
+      if (v.state !== "now") {
+        alsoTag = '<span class="alsotag" style="background:var(--warn)">Arriving ' +
+                  v.soonDate + '</span>';
+      } else if (v.hire) {
+        alsoTag = '<span class="alsotag">Also for hire</span>';
+      }
+    } else {
+      priceHTML = '<b class="tnum">$' + v.hire.price + '</b> <span>/ week</span>';
+      badge = v.state === "now"
+        ? '<span class="badge now">Available now</span>'
+        : '<span class="badge soon">Available ' + v.soonDate + '</span>';
+      if (v.sale) alsoTag = '<span class="alsotag">Also for sale</span>';
+      else if (v.hire.rto) alsoTag = '<span class="alsotag">Rent to own</span>';
+    }
+
+    b.innerHTML =
+      '<span class="pic">' + badge + alsoTag +
+        '<span class="scaler">' +
+          '<picture>' +
+            '<source srcset="cars/' + v.img + '-760.avif 760w, ' +
+              'cars/' + v.img + '-1400.avif 1400w" ' +
+              'sizes="(max-width:560px) 96vw, (max-width:1040px) 50vw, 40vw" ' +
+              'type="image/avif">' +
+            '<img src="cars/' + v.img + '-760.png" alt="' + v.name + '" ' +
+              'width="1400" height="' + v.ih + '" decoding="async" ' +
+              'loading="' + (idx < 3 ? "eager" : "lazy") + '" ' +
+              'fetchpriority="' + (idx < 3 ? "high" : "auto") + '">' +
+          '</picture>' +
+          '<span class="shadow"></span>' +
+        '</span>' +
+      '</span>' +
+      '<span class="bd">' +
+        '<h3>' + v.year + ' ' + v.name + '</h3>' +
+        '<p class="sp">' + v.blurb + '</p>' +
+        '<span class="ft">' +
+          '<span class="pr">' + priceHTML + '</span>' +
+          '<span class="go">View ' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12h13m-5-6 6 6-6 6"/></svg>' +
+          '</span>' +
+        '</span>' +
+      '</span>';
+    return b;
+  }
+
+  function optRow(group, key, label, count){
+    var on = (group === "type" ? F.type : F.body)[key] ? " checked" : "";
+    return '<label class="f-opt' + (count ? "" : " off") + '">' +
+      '<input type="checkbox" data-grp="' + group + '" data-key="' + key + '"' + on + '>' +
+      '<span class="f-box">' + TICK + '</span>' + label +
+      '<span class="n">' + count + '</span></label>';
+  }
+
+  function renderFilters(){
+    var h = '<div class="f-grp"><h4>Type</h4>';
+    Object.keys(TYPE_LABELS).forEach(function(k){
+      var c = FLEET.filter(function(v){ return matches(v, "type") && v.cat === k; }).length;
+      if (!c && !F.type[k] && k === "van") return;   // no vans in stock; don't show a dead row
+      h += optRow("type", k, TYPE_LABELS[k], c);
+    });
+    h += '</div><div class="f-grp"><h4>Body</h4>';
+    Object.keys(BODY_LABELS).forEach(function(k){
+      var c = FLEET.filter(function(v){ return matches(v, "body") && v.body === k; }).length;
+      h += optRow("body", k, BODY_LABELS[k], c);
+    });
+    h += '</div>';
+
+    var cap = priceCap(), cur = F.maxPrice == null ? cap : F.maxPrice;
+    h += '<div class="f-grp f-range"><h4>' +
+      (mode === "buy" ? "Max price" : "Max weekly rate") + '</h4>' +
+      '<input type="range" id="fPrice" min="0" max="' + cap + '" step="' + priceStep() +
+      '" value="' + cur + '" aria-label="Maximum price">' +
+      '<div class="val"><span>' + (cur >= cap ? "Any" : capLabel(cur)) + '</span>' +
+      '<i>up to ' + capLabel(cap) + '</i></div></div>';
+
+    if (mode === "buy") {
+      var kcur = F.maxKm == null ? KM_CAP : F.maxKm;
+      h += '<div class="f-grp f-range"><h4>Max kilometres</h4>' +
+        '<input type="range" id="fKm" min="0" max="' + KM_CAP + '" step="10000" value="' +
+        kcur + '" aria-label="Maximum kilometres">' +
+        '<div class="val"><span>' +
+        (kcur >= KM_CAP ? "Any" : kcur.toLocaleString("en-AU") + " km") +
+        '</span><i>up to ' + KM_CAP.toLocaleString("en-AU") + ' km</i></div></div>';
+    }
+
+    var availN = FLEET.filter(function(v){ return matches(v, "avail") && v.state === "now"; }).length;
+    h += '<div class="f-grp"><h4>Availability</h4>' +
+      '<label class="f-opt"><input type="checkbox" id="fNow"' + (F.nowOnly ? " checked" : "") + '>' +
+      '<span class="f-box">' + TICK + '</span>' +
+      (mode === "buy" ? "In the yard now" : "Available now") +
+      '<span class="n">' + availN + '</span></label></div>';
+
+    document.getElementById("fBody").innerHTML = h;
+    updateBadge();
+  }
+
+  function updateBadge(){
+    var a = activeCount();
+    document.getElementById("fClear").disabled = a === 0;
+    var badge = document.getElementById("fBadge");
+    badge.textContent = a;
+    badge.hidden = a === 0;
+  }
+
+  function renderSort(){
+    var opts = mode === "buy"
+      ? [["price-asc","Price: low to high"], ["price-desc","Price: high to low"],
+         ["year-desc","Year: newest first"], ["km-asc","Kilometres: lowest"]]
+      : [["price-asc","Rate: low to high"], ["price-desc","Rate: high to low"],
+         ["year-desc","Year: newest first"]];
+    if (!opts.some(function(o){ return o[0] === SORT; })) SORT = "price-asc";
+    document.getElementById("fSort").innerHTML = opts.map(function(o){
+      return '<option value="' + o[0] + '"' + (o[0] === SORT ? " selected" : "") +
+        '>' + o[1] + '</option>';
+    }).join("");
+  }
+
+  function renderFleet(){
+    var grid = document.getElementById("fleet-grid");
+    grid.innerHTML = "";
+    var shown = FLEET.filter(function(v){ return matches(v, null); });
+    shown.sort(SORTERS[SORT] || SORTERS["price-asc"]);
+
+    var total = FLEET.filter(inMode).length;
+    document.getElementById("fCount").innerHTML =
+      shown.length + (shown.length === 1 ? " car" : " cars") +
+      (shown.length < total ? ' <em>of ' + total + '</em>' : "");
+
+    if (!shown.length) {
+      var e = document.createElement("p");
+      e.className = "empty";
+      e.textContent = "Nothing matches those filters. Try widening the price, or clear them and start again.";
+      grid.appendChild(e);
+      return;
+    }
+    shown.forEach(function(v, i){ grid.appendChild(cardFor(v, i)); });
+  }
+
+  function refresh(){ renderFilters(); renderFleet(); }
+
+  function renderTabs(){
+    var bar = document.getElementById("tabbar");
+    bar.innerHTML = TABS[mode].map(function(t, i){
+      var href = t[0] === "call" ? "#contact" : (t[0] === "browse" ? "#fleet" : "#band");
+      return '<a href="' + href + '"' + (i === 0 ? ' class="on"' : '') + '>' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="2">' + TABICON[t[0]] + '</svg>' + t[1] + '</a>';
+    }).join("");
+  }
+
+  /* ═════════════════ vehicle sheet ═════════════════ */
+  var scrim = null, lastFocus = null;
+
+  function specRows(v){
+    var rows = v.specs.slice();
+    if (mode === "buy") {
+      rows = [["Year", v.year], ["Odometer", v.sale.odo + " km"],
+              ["Rego until", v.sale.rego]].concat(v.specs.slice(0, 1));
+    }
+    return rows.map(function(p){
+      return '<div><dt>' + p[0] + '</dt><dd>' + p[1] + '</dd></div>';
+    }).join("");
+  }
+
+  function hireForm(){
+    return '<div class="two">' +
+        '<span class="f"><label for="q-name">Your name</label>' +
+          '<input id="q-name" name="name" autocomplete="name" placeholder="Jordan Smith"></span>' +
+        '<span class="f"><label for="q-phone">Mobile</label>' +
+          '<input id="q-phone" name="phone" type="tel" autocomplete="tel" placeholder="04.. ... ..."></span>' +
+      '</div>' +
+      '<div class="two">' +
+        '<span class="f"><label for="q-from">Pick up</label>' +
+          '<input id="q-from" name="from" type="date" value="2026-09-17"></span>' +
+        '<span class="f"><label for="q-len">How long</label>' +
+          '<select id="q-len" name="len"><option>1 week</option><option>A few days</option>' +
+          '<option>2–4 weeks</option><option>Long term / ongoing</option></select></span>' +
+      '</div>' +
+      '<span class="f"><label for="q-lic">Licence held since</label>' +
+        '<select id="q-lic" name="lic"><option>More than 3 years</option>' +
+        '<option>1–3 years</option><option>Under 1 year</option>' +
+        '<option>Overseas licence</option></select></span>' +
+      '<span class="f"><label for="q-msg">Anything we should know?</label>' +
+        '<textarea id="q-msg" name="msg" placeholder="Driving for Uber, need it from Thursday…"></textarea></span>';
+  }
+
+  function buyForm(){
+    return '<div class="two">' +
+        '<span class="f"><label for="q-name">Your name</label>' +
+          '<input id="q-name" name="name" autocomplete="name" placeholder="Jordan Smith"></span>' +
+        '<span class="f"><label for="q-phone">Mobile</label>' +
+          '<input id="q-phone" name="phone" type="tel" autocomplete="tel" placeholder="04.. ... ..."></span>' +
+      '</div>' +
+      '<div class="two">' +
+        '<span class="f"><label for="q-day">Test drive day</label>' +
+          '<input id="q-day" name="day" type="date" value="2026-09-19"></span>' +
+        '<span class="f"><label for="q-time">Time that suits</label>' +
+          '<select id="q-time" name="time"><option>Morning</option><option>Around midday</option>' +
+          '<option>Afternoon</option><option>Saturday morning</option></select></span>' +
+      '</div>' +
+      '<span class="f"><label for="q-pay">How are you thinking of paying?</label>' +
+        '<select id="q-pay" name="pay"><option>Not sure yet</option><option>Paying outright</option>' +
+        '<option>I’d like finance information</option></select></span>' +
+      '<label class="chk"><input type="checkbox" id="q-trade" name="trade"> ' +
+        'I have a car to trade in</label>' +
+      '<span class="f"><label for="q-msg">Anything you want to ask?</label>' +
+        '<textarea id="q-msg" name="msg" placeholder="Can I see the service history?"></textarea></span>';
+  }
+
+  function openSheet(id){
+    var v = FLEET.filter(function(x){ return x.id === id; })[0];
+    if (!v) return;
+    // opening a hire-only car while in Buy mode (or vice versa) flips the mode
+    if (!inMode(v)) setMode(mode === "buy" ? "hire" : "buy");
+    closeSheet();
+    lastFocus = document.activeElement;
+
+    var buying = mode === "buy";
+    var priceBlock = buying
+      ? '<div class="sheet-pr"><b class="tnum">' + money(v.sale.price) + '</b>' +
+        '<span>drive away</span></div>' +
+        '<p class="sheet-fin tnum">Finance from $' + v.sale.weekly + ' per week*</p>'
+      : '<div class="sheet-pr"><b class="tnum">$' + v.hire.price + '</b>' +
+        '<span>per week, including standard cover</span></div>';
+
+    var cross = "";
+    if (buying && v.hire) {
+      cross = '<div class="crossover"><span>Also available to hire &mdash; $' + v.hire.price +
+              ' a week</span><button type="button" data-mode="hire" data-open="' + v.id +
+              '">Switch to hire</button></div>';
+    } else if (!buying && v.sale) {
+      cross = '<div class="crossover"><span>You can also buy this one &mdash; ' +
+              money(v.sale.price) + ' drive away</span>' +
+              '<button type="button" data-mode="buy" data-open="' + v.id +
+              '">Switch to buy</button></div>';
+    }
+
+    var fineprint = buying
+      ? '<p class="fine">No payment taken here. *Finance figures are an illustration only, not a ' +
+        'quote or an offer of credit — your actual repayments are set by the lender. We’ll ' +
+        'confirm the drive-away price and what to bring before your test drive.</p>'
+      : '<p class="fine">No payment taken here. We reply the same day with a confirmed price, ' +
+        'what to bring and a pick-up time.</p>';
+
+    scrim = document.createElement("div");
+    scrim.className = "scrim";
+    scrim.innerHTML =
+      '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + v.name + '">' +
+        '<div class="sheet-l">' +
+          '<span class="scaler">' +
+            '<picture><source srcset="cars/' + v.img + '-760.avif 760w, ' +
+              'cars/' + v.img + '-1400.avif 1400w" ' +
+              'sizes="(max-width:860px) 360px, 480px" type="image/avif">' +
+              '<img class="car" src="cars/' + v.img + '-760.png" alt="' + v.name +
+              '" width="1400" height="' + v.ih + '"></picture>' +
+            '<span class="shadow"></span>' +
+          '</span>' +
+          '<dl class="sheet-specs">' + specRows(v) + '</dl>' +
+        '</div>' +
+        '<div class="sheet-r">' +
+          '<div class="sheet-hd">' +
+            '<div style="flex:1 1 auto">' +
+              '<span class="badge ' + (v.state === "now" ? "now" : "soon") +
+                '" style="position:static;display:inline-block">' +
+                (v.state !== "now" ? (buying ? "Arriving " : "Available ") + v.soonDate
+                 : (buying ? "In the yard" : "Available now")) + '</span>' +
+              '<h2>' + v.year + ' ' + v.name + '</h2>' +
+            '</div>' +
+            '<button class="x" type="button" data-close aria-label="Close">✕</button>' +
+          '</div>' +
+          priceBlock + cross +
+          '<form class="frm" novalidate>' +
+            (buying ? buyForm() : hireForm()) +
+            '<div class="frm-acts">' +
+              '<button class="btn btn-pri btn-lg" type="submit">' +
+                (buying ? "Book a test drive" : "Send enquiry") + '</button>' +
+              '<a class="icb" href="tel:+61000000000">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5h5l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v5H5Z"/></svg>Call</a>' +
+              '<a class="icb" href="#contact">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 11.8a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.4-4.6A8.4 8.4 0 1 1 20.5 11.8Z"/></svg>WhatsApp</a>' +
+            '</div>' + fineprint +
+          '</form>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(scrim);
+    document.body.style.overflow = "hidden";
+
+    scrim.addEventListener("click", function(e){
+      if (e.target === scrim || e.target.closest("[data-close]")) closeSheet();
+    });
+    scrim.querySelector("form").addEventListener("submit", function(e){
+      e.preventDefault();
+      var acts = scrim.querySelector(".frm-acts"), fine = scrim.querySelector(".fine");
+      var ok = document.createElement("p");
+      ok.className = "sent";
+      ok.textContent = buying
+        ? "Test drive requested — we'll confirm a time today for the " + v.name + "."
+        : "Enquiry sent — we'll be in touch today about the " + v.name + ".";
+      acts.hidden = true; if (fine) fine.hidden = true;
+      e.target.appendChild(ok);
+    });
+    var first = scrim.querySelector("#q-name");
+    if (first) first.focus({preventScroll:true});
+  }
+
+  function closeSheet(){
+    if (!scrim) return;
+    scrim.remove(); scrim = null;
+    document.body.style.overflow = "";
+    if (lastFocus && lastFocus.focus) lastFocus.focus({preventScroll:true});
+    lastFocus = null;
+  }
+
+  /* ═════════════════ wiring ═════════════════ */
+  document.getElementById("mHire").addEventListener("click", function(){ setMode("hire"); });
+  document.getElementById("mBuy").addEventListener("click", function(){ setMode("buy"); });
+
+  document.addEventListener("click", function(e){
+    var t = e.target.closest("[data-mode], [data-open]");
+    if (!t) return;
+    var wantMode = t.getAttribute("data-mode");
+    var wantOpen = t.getAttribute("data-open");
+    if (wantMode) {
+      e.preventDefault();
+      setMode(wantMode, wantOpen ? null : (t.getAttribute("href") || null));
+    }
+    if (wantOpen) { e.preventDefault(); openSheet(wantOpen); }
+  });
+
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeSheet(); });
+
+  var fBody = document.getElementById("fBody");
+  fBody.addEventListener("input", function(e){
+    var t = e.target, lab = t.parentNode.querySelector(".val span");
+    if (t.id === "fPrice") {
+      F.maxPrice = (+t.value >= priceCap()) ? null : +t.value;
+      if (lab) lab.textContent = F.maxPrice == null ? "Any" : capLabel(F.maxPrice);
+      renderFleet(); updateBadge();
+    } else if (t.id === "fKm") {
+      F.maxKm = (+t.value >= KM_CAP) ? null : +t.value;
+      if (lab) lab.textContent = F.maxKm == null ? "Any"
+        : F.maxKm.toLocaleString("en-AU") + " km";
+      renderFleet(); updateBadge();
+    }
+  });
+  fBody.addEventListener("change", function(e){
+    var t = e.target;
+    if (t.id === "fPrice" || t.id === "fKm") { refresh(); return; }
+    if (t.id === "fNow") { F.nowOnly = t.checked; refresh(); return; }
+    var g = t.getAttribute("data-grp"), k = t.getAttribute("data-key");
+    if (g && k) { (g === "type" ? F.type : F.body)[k] = t.checked; refresh(); }
+  });
+
+  document.getElementById("fClear").addEventListener("click", function(){
+    F = {type:{}, body:{}, maxPrice:null, maxKm:null, nowOnly:false};
+    refresh();
+  });
+  document.getElementById("fSort").addEventListener("change", function(e){
+    SORT = e.target.value; renderFleet();
+  });
+
+  /* on a phone the rail becomes a bottom sheet */
+  var railEl = document.getElementById("filters"), railScrim = document.getElementById("fScrim");
+  function openRail(open){
+    railEl.classList.toggle("open", open);
+    railScrim.classList.toggle("on", open);
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+  document.getElementById("fOpen").addEventListener("click", function(){ openRail(true); });
+  document.getElementById("fDone").addEventListener("click", function(){ openRail(false); });
+  railScrim.addEventListener("click", function(){ openRail(false); });
+
+  document.getElementById("finder").addEventListener("submit", function(e){
+    e.preventDefault();
+    var map = {"Economy car":"economy", "Rideshare & everyday":"rideshare",
+               "Family & SUV":"family", "Prestige":"prestige", "Van & moving":"van"};
+    var pick = map[document.getElementById("f-need").value];
+    F.type = {};
+    if (pick) F.type[pick] = true;
+    if (mode === "buy") {
+      var budget = {"Under $10,000":10000, "$10,000 \u2013 $15,000":15000,
+                    "$15,000 \u2013 $30,000":30000};
+      var b = budget[document.getElementById("f-budget").value];
+      F.maxPrice = b != null ? b : null;
+    }
+    refresh();
+    document.getElementById("fleet").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  setMode(mode);
+})();
+</script>
+</body>
+</html>
