@@ -387,13 +387,20 @@
         '<div class="big"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H8M16 4h3.5A1.5 1.5 0 0 1 21 5.5V8M21 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H4.5A1.5 1.5 0 0 1 3 18.5V16"/><path d="M3 12h18"/></svg></div>' +
         '<b>Scan the licence</b>' +
         '<p>Lay the card flat, fill the frame, and keep the light off the plastic. ' +
-          'Daylight or a window beats a ceiling light.</p>' +
+          'Daylight beats a ceiling light. Do both sides &mdash; the card number and ' +
+          'conditions are on the back.</p>' +
         '<div class="row">' +
-          '<label class="btn slim" for="licFront">Photograph the licence</label>' +
+          '<label class="btn slim" for="licFront" id="lblFront">Front</label>' +
+          '<label class="btn slim" for="licBack" id="lblBack">Back</label>' +
         '</div>' +
         '<input type="file" id="licFront" accept="image/*" capture="environment">' +
+        '<input type="file" id="licBack" accept="image/*" capture="environment">' +
         '<div class="status" id="scanStatus" hidden></div>' +
-        '<div class="raw" id="scanRaw" hidden></div>' +
+        '<div id="rawWrap" hidden>' +
+          '<div class="raw" id="scanRaw"></div>' +
+          '<button class="btn ghost slim" id="copyRaw" style="margin-top:8px">' +
+            'Copy this text</button>' +
+        '</div>' +
         '<div class="privacy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto;margin-top:1px"><path d="M12 3.5 19 6v6c0 4.2-2.9 7.2-7 8.4C7.9 19.2 5 16.2 5 12V6Z"/></svg>' +
         '<span>The photo is used to read the details and is then discarded &mdash; only the fields below are saved.</span></div>' +
       '</div></div>' +
@@ -416,48 +423,95 @@
 
     var st = document.getElementById("scanStatus");
     var rawBox = document.getElementById("scanRaw");
+    var rawWrap = document.getElementById("rawWrap");
+    var rawText = { front: "", back: "" };
 
-    function showRaw(text) {
-      rawBox.textContent = "Raw from the licence:\n\n" + text;
-      rawBox.hidden = false;
+    function showRaw() {
+      var parts = [];
+      if (rawText.front) parts.push("--- FRONT ---\n" + rawText.front.trim());
+      if (rawText.back) parts.push("--- BACK ---\n" + rawText.back.trim());
+      rawBox.textContent = parts.join("\n\n");
+      rawWrap.hidden = !parts.length;
     }
 
-    document.getElementById("licFront").addEventListener("change", function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (!f) return;
-      status(st, "work", "Loading the text reader (first time only \u2014 it is a big download)\u2026");
+    document.getElementById("copyRaw").addEventListener("click", function () {
+      var btn = this, txt = rawBox.textContent;
+      function done() { btn.textContent = "Copied"; setTimeout(function () {
+        btn.textContent = "Copy this text"; }, 1600); }
+      function legacy() {
+        var ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+        document.body.appendChild(ta);
+        ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length);
+        var ok = false;
+        try { ok = document.execCommand("copy"); } catch (e) {}
+        ta.remove();
+        if (ok) done();
+        else { btn.textContent = "Select the text above and copy it"; }
+      }
+      // the clipboard API is present but rejects in plenty of contexts, so
+      // fall through on failure rather than only on absence
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(done, legacy);
+      } else {
+        legacy();
+      }
+    });
+
+    function runOCR(file, side) {
+      var label = side === "back" ? "back" : "front";
+      status(st, "work", "Loading the reader (first time only \u2014 it is a big download)\u2026");
       var url;
-      readPhoto(f, 2000, 0.95)
+      readPhoto(file, 2000, 0.95)
         .then(function (u) { return prepForOCR(u, 1.5); })
         .then(function (u) { url = u; return loadOCR(); })
         .then(function () {
-          status(st, "work", "Reading the card\u2026");
+          status(st, "work", "Reading the " + label + " of the card\u2026");
           return Tesseract.createWorker("eng");
         })
         .then(function (worker) {
           return worker.setParameters({
+            /* 4 = one column of text at varying sizes. On a licence this keeps
+               the reading order far closer to the card than the default, which
+               hops between the photo and the text and scrambles the lines. */
+            tessedit_pageseg_mode: "4",
             tessedit_char_whitelist:
               "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 /-.,'",
             preserve_interword_spaces: "1"
           }).then(function () {
             return worker.recognize(url);
-          }).then(function (res) {
-            worker.terminate();
-            return res;
-          });
+          }).then(function (res) { worker.terminate(); return res; });
         })
         .then(function (res) {
-          var text = (res.data && res.data.text) || "";
-          showRaw(text);
-          var n = applyFields(parseLicence(text));
-          if (n) status(st, "good", "Filled in " + n + " field" + (n === 1 ? "" : "s") +
-                        " from the card. Reading text is never exact \u2014 check every one.");
-          else status(st, "warn", "Read the card but could not pick out the fields. The text it " +
-                      "got is below \u2014 send it over and I will write the parser for this state.");
+          rawText[label] = (res.data && res.data.text) || "";
+          showRaw();
+          var found = parseLicence(rawText.front + "\n" + rawText.back);
+          var n = applyFields(found);
+          var doneSides = (rawText.front ? 1 : 0) + (rawText.back ? 1 : 0);
+          if (n) {
+            status(st, "good", "Filled in " + n + " field" + (n === 1 ? "" : "s") +
+              " from the " + label + ". Reading text is never exact \u2014 check every one." +
+              (doneSides < 2 ? " Now do the other side." : ""));
+          } else {
+            status(st, "warn", "Read the " + label + " but could not pick out the fields yet. " +
+              "The text is below \u2014 tap <strong>Copy this text</strong> and send it over, " +
+              "and the parser can be written for this card.");
+          }
         })
         .catch(function (err) {
-          status(st, "warn", "Could not read the card. " + esc(err.message || ""));
+          status(st, "warn", "Could not read the " + label + ". " + esc(err.message || ""));
         });
+    }
+
+    document.getElementById("licFront").addEventListener("change", function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) runOCR(f, "front");
+      e.target.value = "";
+    });
+    document.getElementById("licBack").addEventListener("change", function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) runOCR(f, "back");
       e.target.value = "";
     });
   }
