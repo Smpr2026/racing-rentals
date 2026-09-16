@@ -143,10 +143,11 @@
   }
 
   // ── reading a licence ───────────────────────────────────────────────────
-  /* Australian licence barcodes are not standardised the way US ones are, so
-     this parses what it recognises and always shows the raw text — that is how
-     you find out what a given state actually encodes. Every field stays
-     editable regardless. */
+  /* Australian licences carry no machine-readable barcode — that is a US card
+     feature — so the front is read as text and the fields are pulled out of it.
+     The raw text is always shown: that is what a per-state parser gets written
+     from, and it is the only way to tell a bad photo from an unknown layout.
+     Every field stays editable regardless. */
   function parseLicence(raw) {
     var out = {}, txt = String(raw || "");
 
@@ -187,21 +188,6 @@
     var st = txt.match(/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b/);
     if (st) out.state = st[1];
     return out;
-  }
-
-  function decodeBarcode(dataUrl) {
-    return new Promise(function (resolve, reject) {
-      if (typeof ZXing === "undefined") return reject(new Error("scanner unavailable"));
-      var hints = new Map();
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,
-        [ZXing.BarcodeFormat.PDF_417, ZXing.BarcodeFormat.QR_CODE,
-         ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.CODE_128]);
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-      var reader = new ZXing.BrowserMultiFormatReader(hints);
-      reader.decodeFromImageUrl(dataUrl)
-        .then(function (r) { resolve(r.getText()); })
-        .catch(reject);
-    });
   }
 
   var ocrLoading = null;
@@ -400,14 +386,11 @@
       '<div class="card"><div class="scan">' +
         '<div class="big"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H8M16 4h3.5A1.5 1.5 0 0 1 21 5.5V8M21 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H4.5A1.5 1.5 0 0 1 3 18.5V16"/><path d="M3 12h18"/></svg></div>' +
         '<b>Scan the licence</b>' +
-        '<p>Photograph the <strong>front</strong> of the card &mdash; lay it flat, fill the frame, ' +
-          'no glare. Most Australian licences have nothing readable on the back, but if this one ' +
-          'has a barcode you can try that too.</p>' +
+        '<p>Lay the card flat, fill the frame, and keep the light off the plastic. ' +
+          'Daylight or a window beats a ceiling light.</p>' +
         '<div class="row">' +
-          '<label class="btn slim" for="licFront">Photograph the front</label>' +
-          '<label class="btn slim ghost" for="licBack">Try a barcode</label>' +
+          '<label class="btn slim" for="licFront">Photograph the licence</label>' +
         '</div>' +
-        '<input type="file" id="licBack" accept="image/*" capture="environment">' +
         '<input type="file" id="licFront" accept="image/*" capture="environment">' +
         '<div class="status" id="scanStatus" hidden></div>' +
         '<div class="raw" id="scanRaw" hidden></div>' +
@@ -438,40 +421,6 @@
       rawBox.textContent = "Raw from the licence:\n\n" + text;
       rawBox.hidden = false;
     }
-
-    var lastShot = null;
-
-    document.getElementById("licBack").addEventListener("change", function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (!f) return;
-      status(st, "work", "Looking for a barcode\u2026");
-      readPhoto(f, 2000, 0.94).then(function (u) {
-        lastShot = u;
-        return decodeBarcode(u);
-      }).then(function (text) {
-        showRaw(text);
-        var n = applyFields(parseLicence(text));
-        if (n) status(st, "good", "Filled in " + n + " field" + (n === 1 ? "" : "s") +
-                      " from the barcode. Check them against the card.");
-        else status(st, "warn", "The barcode read, but nothing matched a field I recognise. " +
-                    "The raw text is below \u2014 send it over and I will teach it this format.");
-      }).catch(function () {
-        status(st, "warn", "No barcode on that side. Most Australian licences do not carry " +
-               "one \u2014 use <strong>Read the front</strong>, which is the normal way here.");
-        if (lastShot) {
-          rawBox.hidden = false;
-          rawBox.innerHTML = "";
-          var lbl = document.createElement("div");
-          lbl.style.cssText = "margin-bottom:8px;opacity:.75";
-          lbl.textContent = "The photo did reach the scanner \u2014 this is what it saw:";
-          var im = document.createElement("img");
-          im.src = lastShot;
-          im.style.cssText = "width:100%;border-radius:8px;display:block";
-          rawBox.appendChild(lbl); rawBox.appendChild(im);
-        }
-      });
-      e.target.value = "";
-    });
 
     document.getElementById("licFront").addEventListener("change", function (e) {
       var f = e.target.files && e.target.files[0];
