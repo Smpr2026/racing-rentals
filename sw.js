@@ -1,7 +1,7 @@
 /* Racing Rentals & Sales — offline shell.
    Precaches the page and the small car images; everything else (the 1400px
    variants, PNG fallbacks, webfonts) is cached the first time it is used. */
-const VERSION = "racing-v1";
+const VERSION = "racing-v2";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -41,14 +41,22 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
+  // The staff app is a separate thing with its own lifecycle — stay out of it.
+  if (url.pathname.indexOf("/staff/") !== -1) return;
+
   // The page itself: network first, so a republish lands straight away,
-  // with the cached copy as the offline fallback.
+  // with the cached copy as the offline fallback. Only the front page is
+  // stored under index.html — caching any navigation there would let another
+  // page overwrite the offline copy of the homepage.
   if (req.mode === "navigate") {
+    const isFrontPage = /\/(index\.html)?$/.test(url.pathname);
     e.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put("./index.html", copy));
+          if (isFrontPage && res.ok) {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put("./index.html", copy));
+          }
           return res;
         })
         .catch(() => caches.match("./index.html").then((r) => r || caches.match("./")))
