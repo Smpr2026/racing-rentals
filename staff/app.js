@@ -109,6 +109,39 @@
     });
   }
 
+  /* Tesseract does far better on a card that has been flattened to grey with
+     the contrast pushed out to the full range, and scaled up a little. */
+  function prepForOCR(dataUrl, scale) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        var c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        var ctx = c.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        var d = ctx.getImageData(0, 0, c.width, c.height), px = d.data;
+        var lo = 255, hi = 0, i, g;
+        for (i = 0; i < px.length; i += 4) {
+          g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
+          px[i] = px[i + 1] = px[i + 2] = g;
+          if (g < lo) lo = g;
+          if (g > hi) hi = g;
+        }
+        var span = Math.max(1, hi - lo);
+        for (i = 0; i < px.length; i += 4) {
+          g = ((px[i] - lo) * 255 / span) | 0;
+          g = g < 0 ? 0 : g > 255 ? 255 : g;
+          px[i] = px[i + 1] = px[i + 2] = g;
+        }
+        ctx.putImageData(d, 0, 0);
+        resolve(c.toDataURL("image/png"));
+      };
+      img.src = dataUrl;
+    });
+  }
+
   // ── reading a licence ───────────────────────────────────────────────────
   /* Australian licence barcodes are not standardised the way US ones are, so
      this parses what it recognises and always shows the raw text — that is how
@@ -367,10 +400,12 @@
       '<div class="card"><div class="scan">' +
         '<div class="big"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H8M16 4h3.5A1.5 1.5 0 0 1 21 5.5V8M21 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H4.5A1.5 1.5 0 0 1 3 18.5V16"/><path d="M3 12h18"/></svg></div>' +
         '<b>Scan the licence</b>' +
-        '<p>Photograph the <strong>back</strong> first &mdash; the barcode fills everything in at once. If there is no barcode, use the front.</p>' +
+        '<p>Photograph the <strong>front</strong> of the card &mdash; lay it flat, fill the frame, ' +
+          'no glare. Most Australian licences have nothing readable on the back, but if this one ' +
+          'has a barcode you can try that too.</p>' +
         '<div class="row">' +
-          '<label class="btn slim" for="licBack">Photograph back</label>' +
-          '<label class="btn slim ghost" for="licFront">Read the front</label>' +
+          '<label class="btn slim" for="licFront">Photograph the front</label>' +
+          '<label class="btn slim ghost" for="licBack">Try a barcode</label>' +
         '</div>' +
         '<input type="file" id="licBack" accept="image/*" capture="environment">' +
         '<input type="file" id="licFront" accept="image/*" capture="environment">' +
@@ -404,20 +439,36 @@
       rawBox.hidden = false;
     }
 
+    var lastShot = null;
+
     document.getElementById("licBack").addEventListener("change", function (e) {
       var f = e.target.files && e.target.files[0];
       if (!f) return;
-      status(st, "work", "Reading the barcode…");
-      readPhoto(f, 1800, 0.92).then(decodeBarcode).then(function (text) {
+      status(st, "work", "Looking for a barcode\u2026");
+      readPhoto(f, 2000, 0.94).then(function (u) {
+        lastShot = u;
+        return decodeBarcode(u);
+      }).then(function (text) {
         showRaw(text);
         var n = applyFields(parseLicence(text));
         if (n) status(st, "good", "Filled in " + n + " field" + (n === 1 ? "" : "s") +
                       " from the barcode. Check them against the card.");
         else status(st, "warn", "The barcode read, but nothing matched a field I recognise. " +
-                    "The raw text is below — send it to me and I will teach it this format.");
+                    "The raw text is below \u2014 send it over and I will teach it this format.");
       }).catch(function () {
-        status(st, "warn", "No barcode found. Try again with the whole back of the card in " +
-               "frame and good light, or use <strong>Read the front</strong>.");
+        status(st, "warn", "No barcode on that side. Most Australian licences do not carry " +
+               "one \u2014 use <strong>Read the front</strong>, which is the normal way here.");
+        if (lastShot) {
+          rawBox.hidden = false;
+          rawBox.innerHTML = "";
+          var lbl = document.createElement("div");
+          lbl.style.cssText = "margin-bottom:8px;opacity:.75";
+          lbl.textContent = "The photo did reach the scanner \u2014 this is what it saw:";
+          var im = document.createElement("img");
+          im.src = lastShot;
+          im.style.cssText = "width:100%;border-radius:8px;display:block";
+          rawBox.appendChild(lbl); rawBox.appendChild(im);
+        }
       });
       e.target.value = "";
     });
@@ -425,21 +476,35 @@
     document.getElementById("licFront").addEventListener("change", function (e) {
       var f = e.target.files && e.target.files[0];
       if (!f) return;
-      status(st, "work", "Loading the text reader (first time only, this one is a big download)…");
+      status(st, "work", "Loading the text reader (first time only \u2014 it is a big download)\u2026");
       var url;
-      readPhoto(f, 1600, 0.92).then(function (u) { url = u; return loadOCR(); })
+      readPhoto(f, 2000, 0.95)
+        .then(function (u) { return prepForOCR(u, 1.5); })
+        .then(function (u) { url = u; return loadOCR(); })
         .then(function () {
-          status(st, "work", "Reading the card…");
-          return Tesseract.recognize(url, "eng");
+          status(st, "work", "Reading the card\u2026");
+          return Tesseract.createWorker("eng");
+        })
+        .then(function (worker) {
+          return worker.setParameters({
+            tessedit_char_whitelist:
+              "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 /-.,'",
+            preserve_interword_spaces: "1"
+          }).then(function () {
+            return worker.recognize(url);
+          }).then(function (res) {
+            worker.terminate();
+            return res;
+          });
         })
         .then(function (res) {
           var text = (res.data && res.data.text) || "";
           showRaw(text);
           var n = applyFields(parseLicence(text));
           if (n) status(st, "good", "Filled in " + n + " field" + (n === 1 ? "" : "s") +
-                        " from the card. Reading text is less exact than the barcode — check each one.");
-          else status(st, "warn", "Could not make out the details. Try again with the card flat, " +
-                      "filling the frame, no glare.");
+                        " from the card. Reading text is never exact \u2014 check every one.");
+          else status(st, "warn", "Read the card but could not pick out the fields. The text it " +
+                      "got is below \u2014 send it over and I will write the parser for this state.");
         })
         .catch(function (err) {
           status(st, "warn", "Could not read the card. " + esc(err.message || ""));
