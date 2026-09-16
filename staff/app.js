@@ -188,15 +188,17 @@
         return m;
       });
 
-    /* Assign by what the date can plausibly be rather than by the order it
-       appeared — a licence shows a birth date decades back and an expiry in
-       the near future, and OCR rarely returns them in card order. */
+    /* Work out which date is which by asking "could this be a birth date?"
+       rather than "is it in the future?". An expired licence has an expiry in
+       the past, and that is exactly the case worth catching. */
     var nowY = new Date().getFullYear();
-    dates.forEach(function (iso) {
-      var y = +iso.slice(0, 4);
-      if (y <= nowY - 15) { if (!out.dob || iso < out.dob) out.dob = iso; }
-      else if (y >= nowY - 1) { if (!out.expiry || iso > out.expiry) out.expiry = iso; }
-    });
+    var dobs = dates.filter(function (iso) {
+      var age = nowY - (+iso.slice(0, 4));
+      return age >= 15 && age <= 110;
+    }).sort();
+    if (dobs.length) out.dob = dobs[0];
+    var rest = dates.filter(function (iso) { return iso !== out.dob; }).sort();
+    if (rest.length) out.expiry = rest[rest.length - 1];
 
     // ── licence and card numbers ──
     var lic = upper.match(/LIC[EA]N[CS]E?\s*(?:NO|NUMBER|#)?\s*[:.]?\s*([0-9]{5,10}[A-Z]?)/);
@@ -214,18 +216,34 @@
       }
     }
 
-    // ── name ── every capitalised line that is not a label or an address
-    var STOP = /(LIC[EA]N[CS]E|DRIVER|AUSTRALIA|NEW SOUTH WALES|VICTORIA|QUEENSLAND|SOUTH|WESTERN|TASMANIA|TERRITORY|EXPIR|CLASS|CONDITION|DATE|BIRTH|CARD|SIGNATURE|TRANSPORT|SERVICE|GOVERNMENT|ROADS|MARITIME|AUTHORITY|SAMPLE|SPECIMEN)/;
-    var nameish = lines.filter(function (l) {
-      var u = l.toUpperCase();
-      return !/\d/.test(l) &&
-             /^[A-Z][A-Z '\-]{2,40}$/.test(u) &&
-             u.replace(/[^A-Z]/g, "").length >= 4 &&
-             !STOP.test(u);
-    });
-    if (nameish.length) {
-      // NSW prints the family name and the given names on their own lines
-      out.name = nameish.slice(0, 2).join(" ").replace(/\s+/g, " ").trim();
+    /* ── name ──
+       NSW prints it as "George KARAKIOZIS" — given name in title case, family
+       name in capitals — and OCR often trails a label from the right of the
+       card onto the same line. So: strip known labels, then accept a line that
+       reads like a person's name in either case. */
+    var LABELS = /(CARD\s*NUM(BER)?|LIC[EA]N[CS]E\s*(NO|NUMBER|CLASS|FEE)?|DATE\s*OF\s*BIRTH|EXPIRY(\s*DATE)?|CONDITIONS?|CLASS|SIGNATURE|ADDRESS)/gi;
+    var STOP = /(AUSTRALIA|NEW SOUTH WALES|VICTORIA|QUEENSLAND|TASMANIA|TERRITORY|DRIVER|LIC[EA]N[CS]E|ROADS|MARITIME|SERVICES?|TRANSPORT|GOVERNMENT|AUTHORITY|SAMPLE|SPECIMEN|\b(ST|RD|AVE|AV|DR|CR|CRES|CT|PL|PDE|LN|TCE|HWY|STREET|ROAD|AVENUE|DRIVE|PLACE|COURT|CRESCENT|PARADE|LANE|TERRACE|HIGHWAY)\b)/i;
+
+    function looksLikeName(raw) {
+      var l = raw.replace(LABELS, " ").replace(/\s+/g, " ").trim();
+      if (!l || /\d/.test(l) || STOP.test(l)) return null;
+      // a "word" has to contain a letter, or rules of dashes and stray
+      // punctuation from the scan slip through as names
+      var words = l.split(" ").filter(function (w) { return /[A-Za-z]/.test(w); });
+      if (words.length < 2 || words.length > 5) return null;
+      l = words.join(" ");
+      var ok = words.every(function (w) {
+        return /^[A-Z][a-z''\-]{1,}$/.test(w) ||   // Title case
+               /^[A-Z''\-]{2,}$/.test(w);          // ALL CAPS
+      });
+      if (!ok) return null;
+      if (l.replace(/[^A-Za-z]/g, "").length < 5) return null;
+      return l;
+    }
+
+    for (var ni = 0; ni < lines.length; ni++) {
+      var cand = looksLikeName(lines[ni]);
+      if (cand) { out.name = cand; break; }
     }
 
     // ── address ── a line with a number and a street type, plus the line
