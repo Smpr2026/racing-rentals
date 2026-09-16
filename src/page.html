@@ -1,24 +1,3 @@
-<!doctype html>
-<html lang="en-AU">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Racing Rentals and Racing Sales — car hire and a used car yard in Sydney, under one roof.">
-<meta name="theme-color" content="#2F6BFF">
-<meta name="robots" content="noindex">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Racing">
-<style>
-  /* the artifact host supplies these; a standalone page needs them itself */
-  :root{padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
-  html{color-scheme:light}
-  [hidden]{display:none !important}
-</style>
 <title>Racing Rentals &amp; Sales</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
 
@@ -632,8 +611,7 @@ body.mode-buy       [data-arm="hire"]{display:none !important}
   *{animation-duration:.001ms !important; transition-duration:.001ms !important}
 }
 </style>
-</head>
-<body>
+
 <!-- ══════════════════════════ HEADER ══════════════════════════ -->
 <header class="hdr">
   <!-- hidden until something can actually install it; the standalone build
@@ -1577,44 +1555,3 @@ body.mode-buy       [data-arm="hire"]{display:none !important}
   setMode(mode);
 })();
 </script>
-<script>
-(function(){
-  "use strict";
-  if ("serviceWorker" in navigator) {
-    addEventListener("load", function(){
-      navigator.serviceWorker.register("sw.js").catch(function(){});
-    });
-  }
-
-  var strip = document.getElementById("installStrip");
-  var btn   = document.getElementById("installBtn");
-  var text  = document.getElementById("installText");
-  if (!strip) return;
-
-  // already installed: never nag
-  if (matchMedia("(display-mode: standalone)").matches || navigator.standalone === true) return;
-
-  var deferred = null;
-  addEventListener("beforeinstallprompt", function(e){
-    e.preventDefault();
-    deferred = e;
-    strip.hidden = false;
-  });
-  btn.addEventListener("click", function(){
-    if (!deferred) return;
-    deferred.prompt();
-    deferred.userChoice.then(function(){ deferred = null; strip.hidden = true; });
-  });
-  addEventListener("appinstalled", function(){ strip.hidden = true; });
-
-  // iOS never fires beforeinstallprompt — it has to go through the Share sheet
-  var ua = navigator.userAgent;
-  if (/iPad|iPhone|iPod/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)) {
-    text.textContent = "Add Racing to your home screen \u2014 tap Share, then Add to Home Screen.";
-    btn.hidden = true;
-    strip.hidden = false;
-  }
-})();
-</script>
-</body>
-</html>

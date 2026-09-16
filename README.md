@@ -50,3 +50,27 @@ representative, and the wording needs their sign-off.
 
     index.html    the whole site — no build step, no dependencies
     cars/         vehicle images, AVIF with PNG fallbacks at two sizes each
+
+## Installing to the home screen
+
+The site is a PWA: `manifest.webmanifest`, icons in `icons/`, and `sw.js` for
+offline. On Android/Chrome the browser offers **Install** and the in-page strip
+appears once it does. On iOS there is no install prompt — the strip instead
+tells you to use **Share → Add to Home Screen**.
+
+Once installed it opens with no browser chrome, and the page plus the small car
+images are cached so it loads instantly and still works with no signal. The
+manifest also registers two shortcuts (long-press the icon): *Hire a car* and
+*Cars for sale*.
+
+## Editing
+
+Edit `src/page.html`, then:
+
+    python3 build.py
+
+That regenerates `index.html` — the wrapper, the PWA tags and the install logic
+are added by the build, so `src/page.html` stays publishable as-is.
+
+Bump `VERSION` in `sw.js` when you change cached assets, or returning visitors
+keep the old copy.
