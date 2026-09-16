@@ -17,6 +17,7 @@
     { id: "corolla",   name: "Toyota Corolla Hatch", year: 2011, week: 249, price: 11990, img: "corolla" },
     { id: "focus",     name: "Ford Focus Trend",     year: 2016, week: 259, price: 13990, img: "focus" },
     { id: "commodore", name: "Holden Commodore",     year: 2008, week: 289, price: 9990,  img: "commodore" },
+    { id: "audi-a4",   name: "Audi A4 Avant",        year: 2010, week: 379, price: 15990, img: "audi-a4" },
     { id: "territory", name: "Ford Territory AWD",   year: 2008, week: 339, price: 8490,  img: "territory" },
     { id: "bmw-1",     name: "BMW 1 Series Sport",   year: 2017, week: 399, price: null,  img: "bmw-1" },
     { id: "macan",     name: "Porsche Macan",        year: 2015, week: 599, price: 44990, img: "macan" },
