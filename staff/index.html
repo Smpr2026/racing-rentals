@@ -134,6 +134,15 @@ p.hint{margin:0 0 14px; color:var(--mute); font-size:14.5px}
   background:#0D1B2A; color:#B9C7D9; border-radius:var(--r); padding:11px;
   white-space:pre-wrap; word-break:break-all; max-height:150px; overflow:auto;
 }
+.check{
+  border-radius:var(--r); padding:12px 14px; font-size:14.5px; font-weight:700;
+  display:flex; gap:10px; align-items:flex-start; margin-bottom:14px;
+}
+.check.ok{background:#E7F8F0; color:#07553A}
+.check.soon{background:#FFF4E5; color:#8A5200}
+.check.bad{background:#FEECEA; color:#8C2A1B}
+.check small{display:block; font-weight:500; opacity:.9; margin-top:3px; font-size:13px}
+.check svg{flex:0 0 auto; margin-top:1px}
 .privacy{
   margin-top:12px; font-size:12.5px; color:var(--mute); display:flex; gap:8px;
   align-items:flex-start; line-height:1.45;

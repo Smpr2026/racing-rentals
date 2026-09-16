@@ -149,44 +149,96 @@
      from, and it is the only way to tell a bad photo from an unknown layout.
      Every field stays editable regardless. */
   function parseLicence(raw) {
-    var out = {}, txt = String(raw || "");
+    var out = {};
+    var txt = String(raw || "").replace(/\r/g, "");
+    var upper = txt.toUpperCase();
+    var lines = txt.split("\n").map(function (l) { return l.trim(); })
+                   .filter(function (l) { return l.length > 1; });
+    function pad(v) { return (("0" + v).slice(-2)); }
 
-    // AAMVA-style tagged fields, if present
-    var tags = { DAC: "first", DCS: "last", DAQ: "licence", DBB: "dob", DBA: "expiry",
-                 DAG: "addr", DAI: "suburb", DAJ: "state", DAK: "postcode", DCT: "first" };
-    Object.keys(tags).forEach(function (t) {
-      var m = txt.match(new RegExp(t + "([^\\n\\r]{1,40})"));
-      if (m) out[tags[t]] = m[1].trim();
+    // ── state ── the card spells it out; the form wants the abbreviation
+    var STATES = {
+      "NEW SOUTH WALES": "NSW", "VICTORIA": "VIC", "QUEENSLAND": "QLD",
+      "SOUTH AUSTRALIA": "SA", "WESTERN AUSTRALIA": "WA", "TASMANIA": "TAS",
+      "AUSTRALIAN CAPITAL TERRITORY": "ACT", "NORTHERN TERRITORY": "NT"
+    };
+    Object.keys(STATES).forEach(function (full) {
+      if (!out.state && upper.indexOf(full) !== -1) out.state = STATES[full];
     });
-    if (out.first || out.last) {
-      out.name = [out.first, out.last].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    if (!out.state) {
+      var ab = upper.match(/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b/);
+      if (ab) out.state = ab[1];
     }
 
-    // otherwise: pull the shapes we can recognise out of the text
-    if (!out.licence) {
-      var lic = txt.match(/\b(?:LIC(?:ENCE)?\s*(?:NO|#)?[:\s]*)?([0-9]{6,10}[A-Z]?)\b/);
-      if (lic) out.licence = lic[1];
-    }
-    var dates = txt.match(/\b(\d{2})[\/\-. ](\d{2})[\/\-. ](\d{4})\b/g) ||
-                txt.match(/\b(\d{8})\b/g) || [];
-    function toISO(d) {
-      var m = d.match(/(\d{2})\D?(\d{2})\D?(\d{4})/);
-      if (m) return m[3] + "-" + m[2] + "-" + m[1];
-      m = d.match(/^(\d{4})(\d{2})(\d{2})$/);
-      return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
-    }
-    var iso = dates.map(toISO).filter(Boolean).sort();
-    if (iso.length && !out.dob) out.dob = iso[0];
-    if (iso.length > 1 && !out.expiry) out.expiry = iso[iso.length - 1];
-
-    if (!out.name) {
-      var caps = txt.split(/[\n\r]+/).filter(function (l) {
-        return /^[A-Z][A-Z '\-]{4,40}$/.test(l.trim());
+    // ── dates ── Australian cards print "01 JAN 1990", not 01/01/1990
+    var MONTHS = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8,
+                   SEP:9, SEPT:9, OCT:10, NOV:11, DEC:12 };
+    var dates = [];
+    upper.replace(/\b(\d{1,2})[\s\-.]*([A-Z]{3,4})[\s\-.]*(\d{4})\b/g,
+      function (m, d, mo, y) {
+        if (MONTHS[mo] && +d >= 1 && +d <= 31) dates.push(y + "-" + pad(MONTHS[mo]) + "-" + pad(d));
+        return m;
       });
-      if (caps.length) out.name = caps[0].trim();
+    upper.replace(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\b/g,
+      function (m, d, mo, y) {
+        if (y.length === 2) y = (+y > 50 ? "19" : "20") + y;
+        if (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31) {
+          dates.push(y + "-" + pad(mo) + "-" + pad(d));
+        }
+        return m;
+      });
+
+    /* Assign by what the date can plausibly be rather than by the order it
+       appeared — a licence shows a birth date decades back and an expiry in
+       the near future, and OCR rarely returns them in card order. */
+    var nowY = new Date().getFullYear();
+    dates.forEach(function (iso) {
+      var y = +iso.slice(0, 4);
+      if (y <= nowY - 15) { if (!out.dob || iso < out.dob) out.dob = iso; }
+      else if (y >= nowY - 1) { if (!out.expiry || iso > out.expiry) out.expiry = iso; }
+    });
+
+    // ── licence and card numbers ──
+    var lic = upper.match(/LIC[EA]N[CS]E?\s*(?:NO|NUMBER|#)?\s*[:.]?\s*([0-9]{5,10}[A-Z]?)/);
+    if (lic) out.licence = lic[1];
+    var card = upper.match(/CARD\s*(?:NO|NUMBER|#)?\s*[:.]?\s*([0-9]{8,12})/);
+    if (card) out.card = card[1];
+    if (!out.licence) {
+      // the licence number is the shorter of the bare numbers on the card
+      var bare = (upper.match(/\b\d{5,10}[A-Z]?\b/g) || []).filter(function (v) {
+        return v !== out.card && !/^(19|20)\d\d$/.test(v);   // not a year
+      });
+      if (bare.length) {
+        bare.sort(function (a, b) { return a.length - b.length; });
+        out.licence = bare[0];
+      }
     }
-    var st = txt.match(/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b/);
-    if (st) out.state = st[1];
+
+    // ── name ── every capitalised line that is not a label or an address
+    var STOP = /(LIC[EA]N[CS]E|DRIVER|AUSTRALIA|NEW SOUTH WALES|VICTORIA|QUEENSLAND|SOUTH|WESTERN|TASMANIA|TERRITORY|EXPIR|CLASS|CONDITION|DATE|BIRTH|CARD|SIGNATURE|TRANSPORT|SERVICE|GOVERNMENT|ROADS|MARITIME|AUTHORITY|SAMPLE|SPECIMEN)/;
+    var nameish = lines.filter(function (l) {
+      var u = l.toUpperCase();
+      return !/\d/.test(l) &&
+             /^[A-Z][A-Z '\-]{2,40}$/.test(u) &&
+             u.replace(/[^A-Z]/g, "").length >= 4 &&
+             !STOP.test(u);
+    });
+    if (nameish.length) {
+      // NSW prints the family name and the given names on their own lines
+      out.name = nameish.slice(0, 2).join(" ").replace(/\s+/g, " ").trim();
+    }
+
+    // ── address ── a line with a number and a street type, plus the line
+    //    after it when that carries a postcode
+    var streety = /\b(ST|RD|AVE|AV|DR|CR|CRES|CT|PL|PDE|LN|TCE|HWY|STREET|ROAD|AVENUE|DRIVE|PLACE|COURT|CRESCENT|PARADE|LANE|TERRACE|HIGHWAY|CLOSE|CL|WAY|GROVE|GR)\b/i;
+    for (var k = 0; k < lines.length; k++) {
+      if (streety.test(lines[k]) && /\d/.test(lines[k])) {
+        var addr = [lines[k]];
+        if (lines[k + 1] && /\b\d{4}\b/.test(lines[k + 1])) addr.push(lines[k + 1]);
+        out.addr = addr.join(", ").replace(/\s+/g, " ").trim();
+        break;
+      }
+    }
     return out;
   }
 
@@ -216,13 +268,78 @@
     var n = 0;
     Object.keys(map).forEach(function (k) {
       var el = document.getElementById(map[k]);
-      if (el && found[k] && !el.value) {
-        el.value = found[k];
-        el.parentNode.classList.add("filled");
-        n++;
-      }
+      if (!el || !found[k]) return;
+      // fill an empty field, or correct one an earlier scan filled — but never
+      // overwrite something typed by hand
+      if (el.value && el.dataset.auto !== "1") return;
+      el.value = found[k];
+      el.dataset.auto = "1";
+      el.parentNode.classList.add("filled");
+      n++;
     });
+    licenceCheck();
     return n;
+  }
+
+  /* Is this licence actually usable today? Expiry is the hard stop; age is
+     the one that decides the insurance conversation. */
+  function licenceCheck() {
+    var box = document.getElementById("licCheck");
+    if (!box) return;
+    var expEl = document.getElementById("c-exp");
+    var dobEl = document.getElementById("c-dob");
+    var exp = expEl && expEl.value, dob = dobEl && dobEl.value;
+    if (!exp && !dob) { box.hidden = true; return; }
+
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var bits = [], kind = "ok", head = "";
+
+    if (exp) {
+      var e = new Date(exp + "T00:00:00");
+      var days = Math.round((e - now) / 86400000);
+      var shown = e.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+      if (days < 0) {
+        kind = "bad";
+        head = "Licence expired " + Math.abs(days) + " day" + (Math.abs(days) === 1 ? "" : "s") + " ago";
+        bits.push("Expired " + shown + " \u2014 do not hand over keys.");
+      } else if (days <= 30) {
+        kind = "soon";
+        head = "Expires in " + days + " day" + (days === 1 ? "" : "s");
+        bits.push("Valid until " + shown + ".");
+      } else {
+        head = "Licence valid";
+        bits.push("Until " + shown + ".");
+      }
+    }
+
+    if (dob) {
+      var b = new Date(dob + "T00:00:00");
+      var age = now.getFullYear() - b.getFullYear();
+      var m = now.getMonth() - b.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+      if (age >= 0 && age < 120) {
+        bits.push("Age " + age + ".");
+        if (age < 21) {
+          if (kind === "ok") kind = "soon";
+          if (!head || head === "Licence valid") head = "Driver is under 21";
+          bits.push("Check the insurance position before this one goes out.");
+        } else if (age < 25) {
+          if (kind === "ok") kind = "soon";
+          if (!head || head === "Licence valid") head = "Driver is under 25";
+          bits.push("Most policies surcharge under 25.");
+        }
+      }
+    }
+
+    var icon = kind === "bad"
+      ? '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v6M12 16.5v.01"/></svg>'
+      : kind === "soon"
+      ? '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 3.5 21 19H3Z"/><path d="M12 10v4M12 16.8v.01"/></svg>'
+      : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>';
+
+    box.className = "check " + kind;
+    box.innerHTML = icon + "<span>" + head + "<small>" + bits.join(" ") + "</small></span>";
+    box.hidden = false;
   }
 
   // ── the damage diagram ──────────────────────────────────────────────────
@@ -404,6 +521,7 @@
         '<div class="privacy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto;margin-top:1px"><path d="M12 3.5 19 6v6c0 4.2-2.9 7.2-7 8.4C7.9 19.2 5 16.2 5 12V6Z"/></svg>' +
         '<span>The photo is used to read the details and is then discarded &mdash; only the fields below are saved.</span></div>' +
       '</div></div>' +
+      '<div class="check" id="licCheck" hidden></div>' +
       '<div class="card">' +
         field("c-name", "Full name", { value: c.name, auto: "name" }) +
         '<div class="two">' +
@@ -503,6 +621,12 @@
           status(st, "warn", "Could not read the " + label + ". " + esc(err.message || ""));
         });
     }
+
+    ["c-exp", "c-dob"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener("change", licenceCheck);
+    });
+    licenceCheck();
 
     document.getElementById("licFront").addEventListener("change", function (e) {
       var f = e.target.files && e.target.files[0];
