@@ -11,6 +11,9 @@
 (function () {
   "use strict";
 
+  // shown on screen so a stale cached copy can be spotted instantly
+  var BUILD = "2026-09-17d";
+
   // ── the fleet, mirroring the public site ────────────────────────────────
   var FLEET = [
     { id: "swift",     name: "Suzuki Swift Sport",  year: 2010, week: 219, price: 8990,  img: "swift" },
@@ -173,10 +176,33 @@
     // ── dates ── Australian cards print "01 JAN 1990", not 01/01/1990
     var MONTHS = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8,
                    SEP:9, SEPT:9, OCT:10, NOV:11, DEC:12 };
+    /* Recognition slips a letter often enough on a glossy card — SEP comes
+       back as S£P or 5EP — so accept a month that matches on two of three. */
+    function monthOf(tok) {
+      /* Map the digits recognition substitutes for letters BEFORE stripping —
+         5EP is SEP and AU6 is AUG, but strip first and you are left with two
+         characters and no match. */
+      var t = String(tok).toUpperCase()
+        .replace(/0/g, "O").replace(/1/g, "I").replace(/5/g, "S")
+        .replace(/6/g, "G").replace(/8/g, "B").replace(/4/g, "A")
+        .replace(/2/g, "Z").replace(/\u00A3/g, "E").replace(/\$/g, "S")
+        .replace(/[^A-Z]/g, "");
+      if (MONTHS[t]) return MONTHS[t];
+      if (t.length < 3) return 0;
+      var best = 0, bestScore = 0;
+      Object.keys(MONTHS).forEach(function (m) {
+        if (m.length !== 3) return;
+        var score = 0;
+        for (var i = 0; i < 3; i++) if (t[i] === m[i]) score++;
+        if (score > bestScore) { bestScore = score; best = MONTHS[m]; }
+      });
+      return bestScore >= 2 ? best : 0;
+    }
     var dates = [];
-    upper.replace(/\b(\d{1,2})[\s\-.]*([A-Z]{3,4})[\s\-.]*(\d{4})\b/g,
+    upper.replace(/\b(\d{1,2})[\s\-.]*([A-Z0-9£$]{3,4})[\s\-.]*(\d{4})\b/g,
       function (m, d, mo, y) {
-        if (MONTHS[mo] && +d >= 1 && +d <= 31) dates.push(y + "-" + pad(MONTHS[mo]) + "-" + pad(d));
+        var mm = monthOf(mo);
+        if (mm && +d >= 1 && +d <= 31) dates.push(y + "-" + pad(mm) + "-" + pad(d));
         return m;
       });
     upper.replace(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\b/g,
@@ -246,15 +272,35 @@
       if (cand) { out.name = cand; break; }
     }
 
-    // ── address ── a line with a number and a street type, plus the line
-    //    after it when that carries a postcode
-    var streety = /\b(ST|RD|AVE|AV|DR|CR|CRES|CT|PL|PDE|LN|TCE|HWY|STREET|ROAD|AVENUE|DRIVE|PLACE|COURT|CRESCENT|PARADE|LANE|TERRACE|HIGHWAY|CLOSE|CL|WAY|GROVE|GR)\b/i;
+    /* ── address ──
+       An Australian address ends "SUBURB STATE POSTCODE", which is a far more
+       reliable anchor than the street type — street types get misread and the
+       list of them is endless. Find that line, then take the line above it as
+       the street. */
+    var tail = /^(.*[A-Za-z].*)\s+(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\s+(\d{4})\s*$/i;
     for (var k = 0; k < lines.length; k++) {
-      if (streety.test(lines[k]) && /\d/.test(lines[k])) {
-        var addr = [lines[k]];
-        if (lines[k + 1] && /\b\d{4}\b/.test(lines[k + 1])) addr.push(lines[k + 1]);
-        out.addr = addr.join(", ").replace(/\s+/g, " ").trim();
-        break;
+      var m = lines[k].match(tail);
+      if (!m) continue;
+      var parts = [];
+      var above = lines[k - 1];
+      if (above && /\d/.test(above) && !tail.test(above) &&
+          !/LIC[EA]N[CS]E|CARD|BIRTH|EXPIR|CLASS/i.test(above)) {
+        parts.push(above);
+      }
+      parts.push(lines[k]);
+      out.addr = parts.join(", ").replace(/\s+/g, " ").trim();
+      break;
+    }
+    if (!out.addr) {
+      // fallback: a line carrying both a number and a street type
+      var streety = /\b(ST|RD|AVE|AV|DR|CR|CRES|CT|PL|PDE|LN|TCE|HWY|CCT|ESP|BVD|STREET|ROAD|AVENUE|DRIVE|PLACE|COURT|CRESCENT|PARADE|LANE|TERRACE|HIGHWAY|CIRCUIT|ESPLANADE|BOULEVARD|CLOSE|CL|WAY|GROVE|GR|RISE|QUAY|SQUARE|WALK|MEWS)\b/i;
+      for (var q = 0; q < lines.length; q++) {
+        if (streety.test(lines[q]) && /\d/.test(lines[q])) {
+          var a2 = [lines[q]];
+          if (lines[q + 1] && /\b\d{4}\b/.test(lines[q + 1])) a2.push(lines[q + 1]);
+          out.addr = a2.join(", ").replace(/\s+/g, " ").trim();
+          break;
+        }
       }
     }
     return out;
@@ -280,23 +326,33 @@
     el.hidden = false;
   }
 
+  var FIELD_MAP = { name: "c-name", licence: "c-lic", state: "c-state",
+                    dob: "c-dob", expiry: "c-exp", addr: "c-addr" };
+  var FIELD_LABEL = { name: "Name", licence: "Licence", state: "State",
+                      dob: "Born", expiry: "Expires", addr: "Address" };
+
+  /* Returns what happened to every field, not just a count — that report is
+     what makes a failed scan diagnosable from the phone instead of guesswork. */
   function applyFields(found) {
-    var map = { name: "c-name", licence: "c-lic", dob: "c-dob", expiry: "c-exp",
-                state: "c-state", addr: "c-addr" };
-    var n = 0;
-    Object.keys(map).forEach(function (k) {
-      var el = document.getElementById(map[k]);
-      if (!el || !found[k]) return;
-      // fill an empty field, or correct one an earlier scan filled — but never
-      // overwrite something typed by hand
-      if (el.value && el.dataset.auto !== "1") return;
-      el.value = found[k];
-      el.dataset.auto = "1";
+    var manual = (job.customer && job.customer._manual) || {};
+    var report = [], filled = 0;
+    Object.keys(FIELD_MAP).forEach(function (k) {
+      var el = document.getElementById(FIELD_MAP[k]);
+      var got = found[k];
+      if (!el) return;
+      if (!got) { report.push({ k: k, value: "", state: "no" }); return; }
+      // anything typed by hand wins; anything a scan put there can be corrected
+      if (manual[FIELD_MAP[k]]) {
+        report.push({ k: k, value: got, state: "kept" });
+        return;
+      }
+      el.value = got;
       el.parentNode.classList.add("filled");
-      n++;
+      report.push({ k: k, value: got, state: "yes" });
+      filled++;
     });
     licenceCheck();
-    return n;
+    return { filled: filled, report: report };
   }
 
   /* Is this licence actually usable today? Expiry is the hard stop; age is
@@ -531,6 +587,7 @@
         '<input type="file" id="licFront" accept="image/*" capture="environment">' +
         '<input type="file" id="licBack" accept="image/*" capture="environment">' +
         '<div class="status" id="scanStatus" hidden></div>' +
+        '<div class="report" id="scanReport" hidden></div>' +
         '<div id="rawWrap" hidden>' +
           '<div class="raw" id="scanRaw"></div>' +
           '<button class="btn ghost slim" id="copyRaw" style="margin-top:8px">' +
@@ -538,6 +595,7 @@
         '</div>' +
         '<div class="privacy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto;margin-top:1px"><path d="M12 3.5 19 6v6c0 4.2-2.9 7.2-7 8.4C7.9 19.2 5 16.2 5 12V6Z"/></svg>' +
         '<span>The photo is used to read the details and is then discarded &mdash; only the fields below are saved.</span></div>' +
+        '<div class="build">build ' + BUILD + '</div>' +
       '</div></div>' +
       '<div class="check" id="licCheck" hidden></div>' +
       '<div class="card">' +
@@ -562,12 +620,24 @@
     var rawWrap = document.getElementById("rawWrap");
     var rawText = { front: "", back: "" };
 
-    function showRaw() {
+    function showRaw(report) {
       var parts = [];
       if (rawText.front) parts.push("--- FRONT ---\n" + rawText.front.trim());
       if (rawText.back) parts.push("--- BACK ---\n" + rawText.back.trim());
       rawBox.textContent = parts.join("\n\n");
       rawWrap.hidden = !parts.length;
+
+      var host = document.getElementById("scanReport");
+      if (!host) return;
+      if (!report) { host.hidden = true; return; }
+      var WORD = { yes: "filled", no: "not found", kept: "kept yours" };
+      host.innerHTML = '<div class="hd">What it read off the card</div>' +
+        report.map(function (x) {
+          return '<div class="rw"><span class="k">' + FIELD_LABEL[x.k] + '</span>' +
+            '<span class="v">' + (x.value ? esc(x.value) : "\u2014") + '</span>' +
+            '<span class="st ' + x.state + '">' + WORD[x.state] + '</span></div>';
+        }).join("");
+      host.hidden = false;
     }
 
     document.getElementById("copyRaw").addEventListener("click", function () {
@@ -621,18 +691,23 @@
         })
         .then(function (res) {
           rawText[label] = (res.data && res.data.text) || "";
-          showRaw();
           var found = parseLicence(rawText.front + "\n" + rawText.back);
-          var n = applyFields(found);
+          var r = applyFields(found);
+          showRaw(r.report);
           var doneSides = (rawText.front ? 1 : 0) + (rawText.back ? 1 : 0);
-          if (n) {
-            status(st, "good", "Filled in " + n + " field" + (n === 1 ? "" : "s") +
-              " from the " + label + ". Reading text is never exact \u2014 check every one." +
+          var any = r.report.filter(function (x) { return x.state !== "no"; }).length;
+          if (r.filled) {
+            status(st, "good", "Filled in " + r.filled + " field" +
+              (r.filled === 1 ? "" : "s") + " from the " + label +
+              ". Check each one against the card." +
               (doneSides < 2 ? " Now do the other side." : ""));
+          } else if (any) {
+            status(st, "warn", "Everything it found was already filled in, so nothing " +
+              "changed. The table below shows what it read.");
           } else {
-            status(st, "warn", "Read the " + label + " but could not pick out the fields yet. " +
-              "The text is below \u2014 tap <strong>Copy this text</strong> and send it over, " +
-              "and the parser can be written for this card.");
+            status(st, "warn", "Read the " + label + ", but none of the fields matched. " +
+              "The table and text below show exactly what it got \u2014 tap " +
+              "<strong>Copy this text</strong> and send it over.");
           }
         })
         .catch(function (err) {
@@ -640,6 +715,14 @@
         });
     }
 
+    Object.keys(FIELD_MAP).forEach(function (k) {
+      var el = document.getElementById(FIELD_MAP[k]);
+      if (!el) return;
+      el.addEventListener("input", function () {
+        job.customer._manual = job.customer._manual || {};
+        job.customer._manual[FIELD_MAP[k]] = true;
+      });
+    });
     ["c-exp", "c-dob"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener("change", licenceCheck);
@@ -850,9 +933,11 @@
     var name = STEPS[job.type][step];
     function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : undefined; }
     if (name === "customer") {
+      var manual = job.customer && job.customer._manual;
       job.customer = { name: val("c-name"), licence: val("c-lic"), state: val("c-state"),
         dob: val("c-dob"), expiry: val("c-exp"), addr: val("c-addr"),
         phone: val("c-phone"), email: val("c-email") };
+      if (manual) job.customer._manual = manual;
     } else if (name === "terms") {
       var t = job.terms;
       if (job.type === "hire") {

@@ -142,6 +142,27 @@ p.hint{margin:0 0 14px; color:var(--mute); font-size:14.5px}
   background:#0D1B2A; color:#B9C7D9; border-radius:var(--r); padding:11px;
   white-space:pre-wrap; word-break:break-all; max-height:150px; overflow:auto;
 }
+.report{
+  margin-top:10px; border:1px solid var(--line); border-radius:var(--r);
+  background:#fff; overflow:hidden; text-align:left;
+}
+.report .hd{
+  font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--mute); padding:9px 12px; background:var(--bg);
+}
+.report .rw{
+  display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:8px;
+  padding:8px 12px; border-top:1px solid var(--line); font-size:13px;
+  align-items:baseline;
+}
+.report .k{color:var(--mute); font-weight:600}
+.report .v{font-weight:600; word-break:break-word; min-width:0}
+.report .st{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px;
+  white-space:nowrap}
+.report .st.yes{background:#E7F8F0; color:#07553A}
+.report .st.no{background:#F1F4F8; color:var(--mute)}
+.report .st.kept{background:#FFF4E5; color:#8A5200}
+.build{margin-top:12px; font-size:11px; color:var(--mute); text-align:center}
 .check{
   border-radius:var(--r); padding:12px 14px; font-size:14.5px; font-weight:700;
   display:flex; gap:10px; align-items:flex-start; margin-bottom:14px;
