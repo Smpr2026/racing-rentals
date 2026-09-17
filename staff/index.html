@@ -65,6 +65,14 @@ p.hint{margin:0 0 14px; color:var(--mute); font-size:14.5px}
 .f input:focus,.f select:focus,.f textarea:focus{
   outline:none; border-color:var(--brand); box-shadow:0 0 0 4px rgba(47,107,255,.15)}
 .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+/* A grid item defaults to min-width:auto — its content's intrinsic size. Date
+   inputs carry a wide intrinsic minimum, which pushed this row past the card
+   edge and shunted the expiry field off screen on a phone. */
+.two > .f{min-width:0}
+.f input[type=date]{
+  -webkit-appearance:none; appearance:none;
+  min-width:0; max-width:100%; text-align:left;
+}
 .f.filled input{background:#F3FBF7; border-color:#B7E4D0}
 
 .btn{
